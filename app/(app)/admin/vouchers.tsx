@@ -1,0 +1,439 @@
+// app/(app)/admin/vouchers.tsx
+// Quản lý Voucher LumiShop: Xem 5 voucher có sẵn, Thêm mã mới và Xóa voucher với giao diện bo tròn mềm mại
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  Modal,
+  ScrollView,
+  SafeAreaView,
+  Alert,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
+import { useTheme } from '../../../theme/useTheme';
+import { Header } from '../../../components/Header';
+import { formatCurrency } from '../../../utils/calculateTotal';
+import axiosClient from '../../../api/axiosClient';
+import { initialVouchers } from '../../../data/products';
+import { Voucher } from '../../../types';
+
+export default function AdminVouchersScreen() {
+  const { colors, borderRadius, shadow, shadowSm } = useTheme();
+
+  const [vouchers, setVouchers] = useState<Voucher[]>(initialVouchers);
+  const [isLoading, setIsLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form input
+  const [code, setCode] = useState('');
+  const [discount, setDiscount] = useState('');
+  const [minOrder, setMinOrder] = useState('200000');
+
+  const fetchVouchers = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axiosClient.get<Voucher[]>('/vouchers');
+      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+        setVouchers(res.data);
+      } else {
+        setVouchers(initialVouchers);
+      }
+    } catch (e) {
+      console.warn('Lỗi fetch vouchers từ server, dùng initialVouchers:', e);
+      setVouchers(initialVouchers);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVouchers();
+  }, []);
+
+  const resetForm = () => {
+    setCode('');
+    setDiscount('');
+    setMinOrder('200000');
+    setModalVisible(false);
+  };
+
+  const handleCreateVoucher = async () => {
+    const cleanCode = code.trim().toUpperCase();
+    if (!cleanCode) {
+      Alert.alert('Lỗi', 'Vui lòng nhập mã voucher!');
+      return;
+    }
+    const numDiscount = Number(discount);
+    if (!numDiscount || numDiscount <= 0) {
+      Alert.alert('Lỗi', 'Vui lòng nhập mức giảm giá hợp lệ!');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const newVoucher: Voucher = {
+      id: String(Date.now()),
+      code: cleanCode,
+      discount: numDiscount,
+      status: 'active',
+      minOrderAmount: Number(minOrder) || 0,
+    };
+
+    try {
+      await axiosClient.post('/vouchers', newVoucher);
+      setVouchers((prev) => [...prev, newVoucher]);
+    } catch (e) {
+      console.warn('Lỗi gọi API thêm voucher, thêm vào state local:', e);
+      setVouchers((prev) => [...prev, newVoucher]);
+    } finally {
+      setIsSubmitting(false);
+      resetForm();
+      if (Platform.OS === 'web') {
+        alert(`Đã thêm thành công voucher "${cleanCode}"!`);
+      } else {
+        Alert.alert('Thành công', `Đã thêm voucher "${cleanCode}"!`);
+      }
+    }
+  };
+
+  const handleDeleteVoucher = (voucherId: string, voucherCode: string) => {
+    const doDelete = async () => {
+      try {
+        await axiosClient.delete(`/vouchers/${voucherId}`);
+      } catch (e) {
+        console.warn('Lỗi gọi API xóa voucher:', e);
+      } finally {
+        setVouchers((prev) => prev.filter((v) => v.id !== voucherId));
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Bạn có chắc muốn xóa mã giảm giá "${voucherCode}"?`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert('Xác nhận xóa', `Bạn có chắc muốn xóa voucher "${voucherCode}"?`, [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Xóa', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  };
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <Header
+        title="Voucher LumiShop"
+        showBack={true}
+        showCart={false}
+        rightAction={
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Thêm voucher mới"
+            onPress={() => setModalVisible(true)}
+            style={[
+              styles.topAddBtn,
+              {
+                backgroundColor: colors.accent,
+                borderRadius: borderRadius.pill,
+              },
+            ]}
+          >
+            <Text style={styles.topAddText}>+ Tạo mã</Text>
+          </Pressable>
+        }
+      />
+
+      {isLoading ? (
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.muted }]}>
+            Đang tải danh sách voucher...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={vouchers}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <View
+              style={[
+                styles.voucherCard,
+                {
+                  backgroundColor: colors.card,
+                  borderRadius: borderRadius.card,
+                  borderColor: colors.border,
+                },
+                shadowSm,
+              ]}
+            >
+              <View style={styles.voucherLeft}>
+                <View
+                  style={[
+                    styles.codeBadge,
+                    {
+                      backgroundColor: colors.accentLight,
+                      borderColor: colors.accent,
+                      borderRadius: borderRadius.pill,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.codeText, { color: colors.accent }]}>
+                    {item.code}
+                  </Text>
+                </View>
+
+                <View style={styles.voucherInfo}>
+                  <Text style={[styles.discountText, { color: colors.text }]}>
+                    Giảm {item.discount <= 100 ? `${item.discount}%` : formatCurrency(item.discount)}
+                  </Text>
+                  <Text style={[styles.conditionText, { color: colors.muted }]}>
+                    Đơn tối thiểu: {item.minOrderAmount ? formatCurrency(item.minOrderAmount) : '0đ'}
+                  </Text>
+                  <Text style={[styles.statusTag, { color: item.status === 'active' ? colors.success : colors.danger }]}>
+                    ● {item.status === 'active' ? 'Đang hoạt động' : 'Hết hạn'}
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`Xóa mã ${item.code}`}
+                onPress={() => handleDeleteVoucher(item.id, item.code)}
+                style={({ pressed }) => [
+                  styles.deleteCircleBtn,
+                  {
+                    backgroundColor: '#FEE2E2',
+                    transform: [{ scale: pressed ? 0.9 : 1 }],
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 16 }}>🗑️</Text>
+              </Pressable>
+            </View>
+          )}
+        />
+      )}
+
+      {/* Modal Tạo Voucher Mới */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.card,
+                borderRadius: borderRadius.card,
+                borderColor: colors.border,
+              },
+              shadow,
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Tạo Voucher Mới</Text>
+              <Pressable onPress={resetForm} style={styles.closeBtn}>
+                <Text style={{ fontSize: 18, color: colors.muted }}>✕</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.formScroll}>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Mã Voucher (In hoa) *</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="Ví dụ: SALE50, LUMI2026..."
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="characters"
+                  value={code}
+                  onChangeText={setCode}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Mức giảm giá *</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="20 (nếu giảm 20%) hoặc 50000 (nếu giảm 50k)..."
+                  placeholderTextColor={colors.muted}
+                  keyboardType="numeric"
+                  value={discount}
+                  onChangeText={setDiscount}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Đơn hàng tối thiểu (VNĐ)</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="Ví dụ: 150000"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="numeric"
+                  value={minOrder}
+                  onChangeText={setMinOrder}
+                />
+              </View>
+
+              <Pressable
+                onPress={handleCreateVoucher}
+                disabled={isSubmitting}
+                style={[
+                  styles.saveBtn,
+                  {
+                    backgroundColor: colors.accent,
+                    borderRadius: borderRadius.button,
+                    opacity: isSubmitting ? 0.7 : 1,
+                  },
+                ]}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Tạo Voucher Ngay</Text>
+                )}
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  topAddBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  topAddText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  voucherCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  voucherLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  codeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  codeText: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  voucherInfo: {
+    flex: 1,
+  },
+  discountText: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  conditionText: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  statusTag: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  deleteCircleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerBox: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 460,
+    borderWidth: 1,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  closeBtn: {
+    padding: 6,
+  },
+  formScroll: {
+    paddingBottom: 10,
+  },
+  inputGroup: {
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  modalInput: {
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 46,
+    fontSize: 14,
+  },
+  saveBtn: {
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+});
