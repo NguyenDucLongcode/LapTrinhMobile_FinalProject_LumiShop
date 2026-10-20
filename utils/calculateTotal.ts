@@ -26,17 +26,11 @@ export function calculateDiscount(subtotal: number, voucher?: Voucher | null): n
     return 0;
   }
 
-  // Nếu voucher có yêu cầu đơn hàng tối thiểu
-  if (voucher.minOrderAmount && subtotal < voucher.minOrderAmount) {
+  if (voucher.minOrderValue > 0 && subtotal < voucher.minOrderValue) {
     return 0;
   }
 
-  // Nếu discount <= 100 coi như tỷ lệ phần trăm (%), ngược lại coi như số tiền cụ thể
-  if (voucher.discount <= 100) {
-    return Math.round((subtotal * voucher.discount) / 100);
-  } else {
-    return Math.min(voucher.discount, subtotal);
-  }
+  return Math.round((subtotal * voucher.discountPercent) / 100);
 }
 
 /**

@@ -24,7 +24,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     if (!isLoading && !token) {
       router.replace('/(auth)/sign-in');
     }
-  }, [isLoading, token]);
+  }, [isLoading, token, router]);
 
   if (isLoading) {
     return (

@@ -11,19 +11,31 @@ import {
   SafeAreaView,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useCartStore } from '../../store/cartStore';
+import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/useTheme';
 import { Header } from '../../components/Header';
 import { calculateTotal, formatCurrency } from '../../utils/calculateTotal';
 import { CartItem } from '../../types';
+import { useCart, useSaveCart } from '../../hooks/useCartsQuery';
 
 export default function CartScreen() {
   const router = useRouter();
   const { colors, borderRadius, shadow, shadowSm } = useTheme();
-  const { items, removeItem, updateQuantity, clearCart } = useCartStore();
+  const userId = useAuthStore((state) => state.user?.id ?? '');
+  const { data: remoteCart, isLoading } = useCart(userId);
+  const saveCart = useSaveCart();
+  const items = remoteCart?.items ?? [];
+  const saveItems = (nextItems: CartItem[]) => remoteCart && saveCart.mutate({ id: String(remoteCart.id), data: { items: nextItems, updatedAt: new Date().toISOString() } });
+  const removeItem = (productId: string) => saveItems(items.filter((item) => String(item.productId ?? item.product.id) !== String(productId)));
+  const updateQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) return removeItem(productId);
+    saveItems(items.map((item) => String(item.productId ?? item.product.id) === String(productId) ? { ...item, quantity: Math.min(quantity, item.product.stock ?? 999) } : item));
+  };
+  const clearCart = () => saveItems([]);
 
   const { total } = calculateTotal(items);
 
@@ -150,7 +162,14 @@ export default function CartScreen() {
         }
       />
 
-      {items.length === 0 ? (
+      {isLoading && items.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.emptySubtitle, { color: colors.muted, marginTop: 12 }]}>
+            Đang tải giỏ hàng...
+          </Text>
+        </View>
+      ) : items.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyCircle, { backgroundColor: colors.accentLight }]}>
             <Text style={{ fontSize: 44 }}>🛍️</Text>

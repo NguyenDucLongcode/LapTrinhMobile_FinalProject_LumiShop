@@ -1,34 +1,39 @@
 // api/axiosClient.ts
-// Cấu hình Axios client để gọi Mock API (JSON Server)
-import axios from 'axios';
+// Axios client dùng chung cho toàn bộ API Layer (JSON Server)
 
-// Base URL mặc định cho JSON Server
+
+import axios from 'axios';
+import type { AxiosInstance } from 'axios'; 
+
+/** Địa chỉ JSON Server (server.cjs) */
 export const BASE_URL = 'http://localhost:3000';
 
-export const axiosClient = axios.create({
+export const axiosClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
-  timeout: 10000, // 10 giây timeout
+  timeout: 10000,
 });
 
-// Request interceptor: có thể bổ sung token xác thực vào header nếu có
+// Gắn token vào header nếu đã đăng nhập (web: localStorage)
 axiosClient.interceptors.request.use(
   (config) => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const token = window.localStorage.getItem('shopabc_auth_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor: chuẩn hóa xử lý phản hồi hoặc lỗi
+// Chuẩn hóa thông báo lỗi tiếng Việt
 axiosClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
     const message =
       error.response?.data?.message ||

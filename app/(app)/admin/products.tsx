@@ -17,39 +17,80 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { useQueryClient } from '@tanstack/react-query';
-import { useProducts } from '../../../hooks/useProducts';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  useCreateProduct,
+  useDeleteProduct,
+  useUpdateProduct,
+  useProducts,
+} from '../../../hooks/useProductsQuery';
+import { useCategories } from '../../../hooks/useCategoriesQuery';
 import { useTheme } from '../../../theme/useTheme';
 import { Header } from '../../../components/Header';
 import { formatCurrency } from '../../../utils/calculateTotal';
-import axiosClient from '../../../api/axiosClient';
-import { Product } from '../../../types';
 
 export default function AdminProductsScreen() {
   const { colors, borderRadius, shadow, shadowSm } = useTheme();
-  const queryClient = useQueryClient();
-  const { data: products, isLoading } = useProducts();
+  const { data: products = [], isLoading } = useProducts();
+  const { data: categories = [] } = useCategories();
+  const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
+  const deleteProduct = useDeleteProduct();
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
-  // Form input
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
-  const [category, setCategory] = useState('clothing');
+  const [categoryId, setCategoryId] = useState('2');
   const [stock, setStock] = useState('20');
   const [image, setImage] = useState(
     'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=80'
   );
   const [description, setDescription] = useState('');
 
+  const isSubmitting = createProduct.isPending || updateProduct.isPending;
+
   const resetForm = () => {
     setName('');
     setPrice('');
-    setCategory('clothing');
+    setCategoryId(categories[0]?.id ?? '2');
     setStock('20');
     setDescription('');
+    setImage('https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=80');
+    setEditingProductId(null);
     setModalVisible(false);
+  };
+
+  const openEditProduct = (product: (typeof products)[number]) => {
+    setEditingProductId(product.id);
+    setName(product.name);
+    setPrice(String(product.price));
+    setCategoryId(product.categoryId);
+    setStock(String(product.stock));
+    setImage(product.image);
+    setDescription(product.description);
+    setModalVisible(true);
+  };
+
+  const pickImage = async () => {
+    try {
+      if (Platform.OS !== 'web') {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Cần quyền truy cập', 'Vui lòng cấp quyền thư viện ảnh để chọn ảnh sản phẩm.');
+          return;
+        }
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.8, base64: true });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setImage(asset.base64 ? `data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}` : asset.uri);
+      }
+    } catch (error) {
+      Alert.alert('Lỗi', error instanceof Error ? error.message : 'Không thể mở thư viện ảnh.');
+    }
   };
 
   const handleCreateProduct = async () => {
@@ -63,42 +104,37 @@ export default function AdminProductsScreen() {
       return;
     }
 
-    setIsSubmitting(true);
-    const newProduct: Product = {
-      id: String(Date.now()),
-      name: name.trim(),
-      price: numPrice,
-      category,
-      stock: Number(stock) || 10,
-      image: image.trim(),
-      description: description.trim() || 'Sản phẩm mới thêm tại LumiShop',
-      rating: 5,
-    };
-
     try {
-      await axiosClient.post('/products', newProduct);
-    } catch (e) {
-      console.warn('Lỗi gọi API thêm sản phẩm:', e);
-    } finally {
-      setIsSubmitting(false);
+      const payload = {
+        name: name.trim(),
+        price: numPrice,
+        categoryId,
+        stock: Number(stock) || 10,
+        image: image.trim(),
+        description: description.trim() || 'Sản phẩm mới thêm tại LumiShop',
+        rating: editingProductId ? products.find((product) => product.id === editingProductId)?.rating ?? 5 : 5,
+      };
+      if (editingProductId) await updateProduct.mutateAsync({ id: editingProductId, data: payload });
+      else await createProduct.mutateAsync(payload);
       resetForm();
-      queryClient.invalidateQueries({ queryKey: ['products'] });
       if (Platform.OS === 'web') {
         alert('Đã thêm sản phẩm mới thành công vào LumiShop!');
       } else {
         Alert.alert('Thành công', 'Đã thêm sản phẩm mới vào LumiShop!');
       }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Không thể thêm sản phẩm!';
+      Alert.alert('Lỗi', msg);
     }
   };
 
   const handleDeleteProduct = (productId: string, productName: string) => {
     const doDelete = async () => {
       try {
-        await axiosClient.delete(`/products/${productId}`);
+        await deleteProduct.mutateAsync(productId);
       } catch (e) {
-        console.warn('Lỗi gọi API xóa sản phẩm:', e);
-      } finally {
-        queryClient.invalidateQueries({ queryKey: ['products'] });
+        const msg = e instanceof Error ? e.message : 'Không thể xóa sản phẩm!';
+        Alert.alert('Lỗi', msg);
       }
     };
 
@@ -125,7 +161,7 @@ export default function AdminProductsScreen() {
             accessible={true}
             accessibilityRole="button"
             accessibilityLabel="Thêm sản phẩm"
-            onPress={() => setModalVisible(true)}
+            onPress={() => { resetForm(); setModalVisible(true); }}
             style={[
               styles.topAddBtn,
               {
@@ -178,9 +214,13 @@ export default function AdminProductsScreen() {
                   {formatCurrency(item.price)}
                 </Text>
                 <Text style={[styles.prodMeta, { color: colors.muted }]}>
-                  Kho: {item.stock} • Loại: {item.category} • ⭐ {item.rating ?? 5.0}
+                  Kho: {item.stock} • Loại: {categories.find((c) => c.id === item.categoryId)?.name ?? item.categoryId} • ⭐ {item.rating ?? 5.0}
                 </Text>
               </View>
+
+              <Pressable accessibilityRole="button" accessibilityLabel={`Sửa ${item.name}`} onPress={() => openEditProduct(item)} style={styles.editCircleBtn}>
+                <Ionicons name="pencil" size={17} color="#2563EB" />
+              </Pressable>
 
               <Pressable
                 accessible={true}
@@ -217,13 +257,21 @@ export default function AdminProductsScreen() {
             ]}
           >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Thêm Sản Phẩm Mới</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{editingProductId ? 'Sửa Sản Phẩm' : 'Thêm Sản Phẩm Mới'}</Text>
               <Pressable onPress={resetForm} style={styles.closeBtn}>
                 <Text style={{ fontSize: 18, color: colors.muted }}>✕</Text>
               </Pressable>
             </View>
 
             <ScrollView contentContainerStyle={styles.formScroll}>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Ảnh sản phẩm</Text>
+                {image ? <Image source={{ uri: image }} style={styles.imagePreview} contentFit="cover" /> : null}
+                <Pressable onPress={pickImage} style={[styles.pickImageBtn, { borderColor: colors.border, backgroundColor: colors.bg }]}>
+                  <Ionicons name="image-outline" size={18} color={colors.accent} />
+                  <Text style={{ color: colors.accent, fontWeight: '700' }}>Chọn ảnh</Text>
+                </Pressable>
+              </View>
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: colors.text }]}>Tên sản phẩm *</Text>
                 <TextInput
@@ -262,21 +310,21 @@ export default function AdminProductsScreen() {
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: colors.text }]}>Danh mục</Text>
                 <View style={styles.categoryPicksRow}>
-                  {['electronics', 'clothing', 'documents', 'other'].map((cat) => (
+                  {categories.map((cat) => (
                     <Pressable
-                      key={cat}
-                      onPress={() => setCategory(cat)}
+                      key={cat.id}
+                      onPress={() => setCategoryId(cat.id)}
                       style={[
                         styles.catChoiceBtn,
                         {
-                          backgroundColor: category === cat ? colors.accent : colors.bg,
+                          backgroundColor: categoryId === cat.id ? colors.accent : colors.bg,
                           borderColor: colors.border,
                           borderRadius: borderRadius.pill,
                         },
                       ]}
                     >
-                      <Text style={{ color: category === cat ? '#FFFFFF' : colors.text, fontSize: 12, fontWeight: '700' }}>
-                        {cat}
+                      <Text style={{ color: categoryId === cat.id ? '#FFFFFF' : colors.text, fontSize: 12, fontWeight: '700' }}>
+                        {cat.name}
                       </Text>
                     </Pressable>
                   ))}
@@ -311,7 +359,7 @@ export default function AdminProductsScreen() {
                 {isSubmitting ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Lưu Sản Phẩm</Text>
+                  <Text style={styles.saveBtnText}>{editingProductId ? 'Lưu Thay Đổi' : 'Lưu Sản Phẩm'}</Text>
                 )}
               </Pressable>
             </ScrollView>
@@ -375,6 +423,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  editCircleBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DBEAFE', marginRight: 8 },
+  imagePreview: { width: 110, height: 82, borderRadius: 10, marginBottom: 8, backgroundColor: '#F1F5F9' },
+  pickImageBtn: { minHeight: 42, borderWidth: 1, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   centerBox: {
     flex: 1,
     justifyContent: 'center',

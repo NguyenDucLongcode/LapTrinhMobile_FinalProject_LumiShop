@@ -1,0 +1,42 @@
+[
+  {
+    "id": "1",
+    "code": "GIAM10",
+    "discountPercent": 10,
+    "minOrderValue": 100000,
+    "status": "active",
+    "expiresAt": "2027-12-31T23:59:59.000Z"
+  },
+  {
+    "id": "2",
+    "code": "GIAM20",
+    "discountPercent": 20,
+    "minOrderValue": 200000,
+    "status": "active",
+    "expiresAt": "2027-12-31T23:59:59.000Z"
+  },
+  {
+    "id": "3",
+    "code": "FREESHIP",
+    "discountPercent": 5,
+    "minOrderValue": 150000,
+    "status": "active",
+    "expiresAt": "2027-06-30T23:59:59.000Z"
+  },
+  {
+    "id": "4",
+    "code": "VIP50",
+    "discountPercent": 50,
+    "minOrderValue": 500000,
+    "status": "active",
+    "expiresAt": "2027-12-31T23:59:59.000Z"
+  },
+  {
+    "id": "5",
+    "code": "SALE30",
+    "discountPercent": 30,
+    "minOrderValue": 300000,
+    "status": "expired",
+    "expiresAt": "2024-01-01T00:00:00.000Z"
+  }
+]

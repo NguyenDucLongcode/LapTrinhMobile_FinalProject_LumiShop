@@ -15,23 +15,27 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/useTheme';
 import { Header } from '../../components/Header';
-import { useCheckVoucher } from '../../hooks/useCheckVoucher';
-import { useCreateOrder } from '../../hooks/useCreateOrder';
+import { useCheckVoucher } from '../../hooks/useVouchersQuery';
+import { useCreateOrder } from '../../hooks/useOrdersQuery';
+import { useCart, useSaveCart } from '../../hooks/useCartsQuery';
 import { calculateTotal, formatCurrency } from '../../utils/calculateTotal';
-import { Voucher, Order } from '../../types';
+import { Voucher } from '../../types';
 
 export default function CheckoutScreen() {
   const router = useRouter();
   const { colors, borderRadius, shadow, shadowSm } = useTheme();
-  const { items, clearCart } = useCartStore();
   const { user } = useAuthStore();
+  const { data: cart } = useCart(user?.id ?? '');
+  const items = cart?.items ?? [];
 
-  const { checkVoucher, isLoading: isCheckingVoucher } = useCheckVoucher();
-  const { createOrder, isLoading: isCreatingOrder } = useCreateOrder();
+  const checkVoucher = useCheckVoucher();
+  const createOrder = useCreateOrder();
+  const saveCart = useSaveCart();
+  const isCheckingVoucher = checkVoucher.isPending;
+  const isCreatingOrder = createOrder.isPending;
 
   // Form giao hàng
   const [customerName, setCustomerName] = useState(user?.name || user?.username || '');
@@ -55,7 +59,7 @@ export default function CheckoutScreen() {
 
     try {
       setVoucherMessage(null);
-      const voucher = await checkVoucher({
+      const voucher = await checkVoucher.mutateAsync({
         code: voucherCodeInput.trim(),
         orderAmount: subtotal,
       });
@@ -65,10 +69,10 @@ export default function CheckoutScreen() {
         text: `Đã áp dụng mã "${voucher.code}" thành công!`,
         isError: false,
       });
-    } catch (err: any) {
+    } catch (err) {
       setAppliedVoucher(null);
       setVoucherMessage({
-        text: err.message || 'Mã giảm giá không hợp lệ!',
+        text: err instanceof Error ? err.message : 'Mã giảm giá không hợp lệ!',
         isError: true,
       });
     }
@@ -92,22 +96,20 @@ export default function CheckoutScreen() {
       return;
     }
 
-    const newOrder: Order = {
-      items: [...items],
-      totalAmount: subtotal,
-      discountAmount,
-      finalAmount: total,
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
-      customerAddress: customerAddress.trim(),
-      voucherCode: appliedVoucher ? appliedVoucher.code : undefined,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-
     try {
-      const result = await createOrder(newOrder);
-      clearCart();
+      const result = await createOrder.mutateAsync({
+        userId: user?.id ?? '2',
+        items: items.map((item) => ({
+          productId: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+        })),
+        totalAmount: total,
+        shippingAddress: `${customerName.trim()} | ${customerPhone.trim()} | ${customerAddress.trim()}`,
+        status: 'pending',
+      });
+      if (cart) await saveCart.mutateAsync({ id: String(cart.id), data: { items: [], updatedAt: new Date().toISOString() } });
 
       const successTitle = '🎉 Đặt hàng LumiShop thành công!';
       const successMsg = `Đơn hàng #${result.id} đã được tiếp nhận.\nTổng thanh toán: ${formatCurrency(total)}`;
@@ -123,8 +125,9 @@ export default function CheckoutScreen() {
           },
         ]);
       }
-    } catch (err: any) {
-      const errorMsg = err.message || 'Không thể tạo đơn hàng, vui lòng thử lại sau!';
+    } catch (err) {
+      const errorMsg =
+        err instanceof Error ? err.message : 'Không thể tạo đơn hàng, vui lòng thử lại sau!';
       if (Platform.OS === 'web') {
         alert(`Lỗi đặt hàng: ${errorMsg}`);
       } else {
@@ -325,7 +328,7 @@ export default function CheckoutScreen() {
           {appliedVoucher && (
             <View style={[styles.appliedChip, { backgroundColor: '#D1FAE5', borderColor: '#10B981', borderRadius: borderRadius.pill }]}>
               <Text style={styles.appliedChipText}>
-                ✅ Đã áp dụng mã {appliedVoucher.code} (-{appliedVoucher.discount <= 100 ? `${appliedVoucher.discount}%` : formatCurrency(appliedVoucher.discount)})
+                ✅ Đã áp dụng mã {appliedVoucher.code} (-{appliedVoucher.discountPercent}%)
               </Text>
               <Pressable onPress={handleRemoveVoucher} hitSlop={6}>
                 <Text style={{ fontSize: 13, color: '#065F46', fontWeight: '800', marginLeft: 8 }}>✕</Text>

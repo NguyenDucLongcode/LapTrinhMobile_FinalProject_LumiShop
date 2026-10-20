@@ -16,12 +16,14 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
+import { useLogin } from '../../hooks/useAuthQuery';
 import { useTheme } from '../../theme/useTheme';
 
 export default function SignInScreen() {
   const router = useRouter();
   const { colors, borderRadius, shadow } = useTheme();
-  const { login, isLoading } = useAuthStore();
+  const persistSession = useAuthStore((state) => state.persistSession);
+  const { mutateAsync: login, isPending: isLoading } = useLogin();
 
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('123');
@@ -35,12 +37,15 @@ export default function SignInScreen() {
     }
 
     setErrorMessage('');
-    const success = await login(username, password);
-
-    if (success) {
+    try {
+      const result = await login({ username: username.trim(), password });
+      await persistSession(result.user, result.token);
       router.replace('/(app)');
-    } else {
-      const msg = 'Đăng nhập không thành công. Vui lòng kiểm tra lại tài khoản!';
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Đăng nhập không thành công. Vui lòng kiểm tra lại tài khoản!';
       setErrorMessage(msg);
       if (Platform.OS !== 'web') {
         Alert.alert('Đăng nhập thất bại', msg);

@@ -1,7 +1,8 @@
 // app/(app)/admin/vouchers.tsx
 // Quản lý Voucher LumiShop: Xem 5 voucher có sẵn, Thêm mã mới và Xóa voucher với giao diện bo tròn mềm mại
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   View,
   Text,
@@ -19,49 +20,45 @@ import {
 import { useTheme } from '../../../theme/useTheme';
 import { Header } from '../../../components/Header';
 import { formatCurrency } from '../../../utils/calculateTotal';
-import axiosClient from '../../../api/axiosClient';
-import { initialVouchers } from '../../../data/products';
-import { Voucher } from '../../../types';
+import {
+  useCreateVoucher,
+  useDeleteVoucher,
+  useUpdateVoucher,
+  useVouchers,
+} from '../../../hooks/useVouchersQuery';
 
 export default function AdminVouchersScreen() {
   const { colors, borderRadius, shadow, shadowSm } = useTheme();
+  const { data: vouchers = [], isLoading } = useVouchers();
+  const createVoucher = useCreateVoucher();
+  const deleteVoucher = useDeleteVoucher();
+  const updateVoucher = useUpdateVoucher();
 
-  const [vouchers, setVouchers] = useState<Voucher[]>(initialVouchers);
-  const [isLoading, setIsLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Form input
+  const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
+  const [status, setStatus] = useState<'active' | 'inactive' | 'expired'>('active');
   const [code, setCode] = useState('');
   const [discount, setDiscount] = useState('');
   const [minOrder, setMinOrder] = useState('200000');
 
-  const fetchVouchers = async () => {
-    setIsLoading(true);
-    try {
-      const res = await axiosClient.get<Voucher[]>('/vouchers');
-      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-        setVouchers(res.data);
-      } else {
-        setVouchers(initialVouchers);
-      }
-    } catch (e) {
-      console.warn('Lỗi fetch vouchers từ server, dùng initialVouchers:', e);
-      setVouchers(initialVouchers);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchVouchers();
-  }, []);
+  const isSubmitting = createVoucher.isPending || updateVoucher.isPending;
 
   const resetForm = () => {
     setCode('');
     setDiscount('');
     setMinOrder('200000');
+    setEditingVoucherId(null);
+    setStatus('active');
     setModalVisible(false);
+  };
+
+  const openEditVoucher = (voucher: (typeof vouchers)[number]) => {
+    setEditingVoucherId(voucher.id);
+    setCode(voucher.code);
+    setDiscount(String(voucher.discountPercent));
+    setMinOrder(String(voucher.minOrderValue));
+    setStatus(voucher.status);
+    setModalVisible(true);
   };
 
   const handleCreateVoucher = async () => {
@@ -71,45 +68,40 @@ export default function AdminVouchersScreen() {
       return;
     }
     const numDiscount = Number(discount);
-    if (!numDiscount || numDiscount <= 0) {
-      Alert.alert('Lỗi', 'Vui lòng nhập mức giảm giá hợp lệ!');
+    if (!numDiscount || numDiscount <= 0 || numDiscount > 100) {
+      Alert.alert('Lỗi', 'Vui lòng nhập phần trăm giảm giá từ 1 đến 100!');
       return;
     }
 
-    setIsSubmitting(true);
-    const newVoucher: Voucher = {
-      id: String(Date.now()),
-      code: cleanCode,
-      discount: numDiscount,
-      status: 'active',
-      minOrderAmount: Number(minOrder) || 0,
-    };
-
     try {
-      await axiosClient.post('/vouchers', newVoucher);
-      setVouchers((prev) => [...prev, newVoucher]);
-    } catch (e) {
-      console.warn('Lỗi gọi API thêm voucher, thêm vào state local:', e);
-      setVouchers((prev) => [...prev, newVoucher]);
-    } finally {
-      setIsSubmitting(false);
+      const payload = {
+        code: cleanCode,
+        discountPercent: numDiscount,
+        minOrderValue: Number(minOrder) || 0,
+        status,
+        expiresAt: editingVoucherId ? vouchers.find((voucher) => voucher.id === editingVoucherId)?.expiresAt : '2027-12-31T23:59:59.000Z',
+      };
+      if (editingVoucherId) await updateVoucher.mutateAsync({ id: editingVoucherId, data: payload });
+      else await createVoucher.mutateAsync(payload);
       resetForm();
       if (Platform.OS === 'web') {
         alert(`Đã thêm thành công voucher "${cleanCode}"!`);
       } else {
         Alert.alert('Thành công', `Đã thêm voucher "${cleanCode}"!`);
       }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Không thể tạo voucher!';
+      Alert.alert('Lỗi', msg);
     }
   };
 
   const handleDeleteVoucher = (voucherId: string, voucherCode: string) => {
     const doDelete = async () => {
       try {
-        await axiosClient.delete(`/vouchers/${voucherId}`);
+        await deleteVoucher.mutateAsync(voucherId);
       } catch (e) {
-        console.warn('Lỗi gọi API xóa voucher:', e);
-      } finally {
-        setVouchers((prev) => prev.filter((v) => v.id !== voucherId));
+        const msg = e instanceof Error ? e.message : 'Không thể xóa voucher!';
+        Alert.alert('Lỗi', msg);
       }
     };
 
@@ -192,16 +184,19 @@ export default function AdminVouchersScreen() {
 
                 <View style={styles.voucherInfo}>
                   <Text style={[styles.discountText, { color: colors.text }]}>
-                    Giảm {item.discount <= 100 ? `${item.discount}%` : formatCurrency(item.discount)}
+                    Giảm {item.discountPercent}%
                   </Text>
                   <Text style={[styles.conditionText, { color: colors.muted }]}>
-                    Đơn tối thiểu: {item.minOrderAmount ? formatCurrency(item.minOrderAmount) : '0đ'}
+                    Đơn tối thiểu: {item.minOrderValue ? formatCurrency(item.minOrderValue) : '0đ'}
                   </Text>
                   <Text style={[styles.statusTag, { color: item.status === 'active' ? colors.success : colors.danger }]}>
                     ● {item.status === 'active' ? 'Đang hoạt động' : 'Hết hạn'}
                   </Text>
                 </View>
               </View>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Sửa mã ${item.code}`} onPress={() => openEditVoucher(item)} style={styles.editCircleBtn}>
+                <Ionicons name="pencil" size={17} color="#2563EB" />
+              </Pressable>
 
               <Pressable
                 accessible={true}
@@ -238,13 +233,23 @@ export default function AdminVouchersScreen() {
             ]}
           >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Tạo Voucher Mới</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{editingVoucherId ? 'Sửa Voucher' : 'Tạo Voucher Mới'}</Text>
               <Pressable onPress={resetForm} style={styles.closeBtn}>
                 <Text style={{ fontSize: 18, color: colors.muted }}>✕</Text>
               </Pressable>
             </View>
 
             <ScrollView contentContainerStyle={styles.formScroll}>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Trạng thái</Text>
+                <View style={styles.statusPicksRow}>
+                  {(['active', 'inactive', 'expired'] as const).map((value) => (
+                    <Pressable key={value} onPress={() => setStatus(value)} style={[styles.statusChoice, { backgroundColor: status === value ? colors.accent : colors.bg, borderColor: colors.border }]}>
+                      <Text style={{ color: status === value ? '#FFF' : colors.text, fontWeight: '700' }}>{value === 'active' ? 'Hoạt động' : value === 'inactive' ? 'Tạm dừng' : 'Hết hạn'}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: colors.text }]}>Mã Voucher (In hoa) *</Text>
                 <TextInput
@@ -261,7 +266,7 @@ export default function AdminVouchersScreen() {
                 <Text style={[styles.label, { color: colors.text }]}>Mức giảm giá *</Text>
                 <TextInput
                   style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
-                  placeholder="20 (nếu giảm 20%) hoặc 50000 (nếu giảm 50k)..."
+                  placeholder="20 (giảm 20%)..."
                   placeholderTextColor={colors.muted}
                   keyboardType="numeric"
                   value={discount}
@@ -296,7 +301,7 @@ export default function AdminVouchersScreen() {
                 {isSubmitting ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Tạo Voucher Ngay</Text>
+                  <Text style={styles.saveBtnText}>{editingVoucherId ? 'Lưu Thay Đổi' : 'Tạo Voucher Ngay'}</Text>
                 )}
               </Pressable>
             </ScrollView>
@@ -373,6 +378,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  editCircleBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DBEAFE', marginRight: 8 },
+  statusChoice: { paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderRadius: 18 },
+  statusPicksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   centerBox: {
     flex: 1,
     justifyContent: 'center',

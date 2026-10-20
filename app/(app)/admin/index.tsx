@@ -11,7 +11,8 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useProducts } from '../../../hooks/useProducts';
+import { useProducts } from '../../../hooks/useProductsQuery';
+import { useVouchers } from '../../../hooks/useVouchersQuery';
 import { useTheme } from '../../../theme/useTheme';
 import { Header } from '../../../components/Header';
 import { useAuthStore } from '../../../store/authStore';
@@ -19,7 +20,8 @@ import { useAuthStore } from '../../../store/authStore';
 export default function AdminDashboardScreen() {
   const router = useRouter();
   const { colors, borderRadius, shadowSm } = useTheme();
-  const { data: products } = useProducts();
+  const { data: products = [] } = useProducts();
+  const { data: vouchers = [] } = useVouchers();
   const { user } = useAuthStore();
 
   return (
@@ -89,7 +91,9 @@ export default function AdminDashboardScreen() {
             ]}
           >
             <Text style={styles.statIcon}>🎟️</Text>
-            <Text style={[styles.statNum, { color: '#3B82F6' }]}>5</Text>
+            <Text style={[styles.statNum, { color: '#3B82F6' }]}>
+              {vouchers.length}
+            </Text>
             <Text style={[styles.statLabel, { color: colors.muted }]}>
               Mã voucher ưu đãi
             </Text>
@@ -125,7 +129,7 @@ export default function AdminDashboardScreen() {
             ]}
           >
             <Text style={styles.statIcon}>👥</Text>
-            <Text style={[styles.statNum, { color: colors.text }]}>2</Text>
+            <Text style={[styles.statNum, { color: colors.text }]}>3</Text>
             <Text style={[styles.statLabel, { color: colors.muted }]}>
               Tài khoản mẫu
             </Text>

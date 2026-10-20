@@ -1,0 +1,39 @@
+[
+  {
+    "userId": "1",
+    "items": [
+      {
+        "id": "2-1792501473167",
+        "productId": "2",
+        "product": {
+          "id": "2",
+          "name": "Bàn Phím Cơ Không Dây Keychron K2 Nhôm RGB",
+          "price": 1950000,
+          "description": "Bàn phím cơ layout 75% gọn gàng, hỗ trợ kết nối Bluetooth 5.1 và cáp Type-C linh hoạt. Tương thích hoàn hảo cả MacOS và Windows cùng cảm giác gõ switch mượt mà.",
+          "image": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=80",
+          "stock": 22,
+          "rating": 4.8,
+          "categoryId": "1"
+        },
+        "quantity": 1
+      },
+      {
+        "id": "6-1792501481976",
+        "productId": "6",
+        "product": {
+          "id": "6",
+          "name": "Máy Ảnh Mirrorless Fujifilm X-T30 II Kèm Ống Kính",
+          "price": 22500000,
+          "description": "Cảm biến X-Trans CMOS 4 26.1MP tái tạo màu sắc phim cổ điển trứ danh của Fujifilm. Lấy nét tự động tốc độ cao chỉ trong 0.02 giây và khả năng quay video 4K sắc nét.",
+          "image": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500&auto=format&fit=crop&q=80",
+          "stock": 8,
+          "rating": 5,
+          "categoryId": "1"
+        },
+        "quantity": 2
+      }
+    ],
+    "updatedAt": "2026-10-20T13:04:41.976Z",
+    "id": 1
+  }
+]

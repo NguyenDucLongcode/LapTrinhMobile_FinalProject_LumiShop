@@ -12,6 +12,8 @@ import { useTheme } from '../theme/useTheme';
 export default function RootLayout() {
   const { isDark, colors } = useTheme();
   const checkAuth = useAuthStore((state) => state.checkAuth);
+  const token = useAuthStore((state) => state.token);
+  const isLoading = useAuthStore((state) => state.isLoading);
 
   const [queryClient] = useState(
     () =>
@@ -43,8 +45,13 @@ export default function RootLayout() {
             },
           }}
         >
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(app)" options={{ headerShown: false }} />
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Protected guard={!isLoading && Boolean(token)} redirectTo="/(auth)/sign-in">
+            <Stack.Screen name="(app)" options={{ headerShown: false }} />
+          </Stack.Protected>
+          <Stack.Protected guard={!isLoading && !token} redirectTo="/(app)">
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          </Stack.Protected>
         </Stack>
       </QueryClientProvider>
     </SafeAreaProvider>

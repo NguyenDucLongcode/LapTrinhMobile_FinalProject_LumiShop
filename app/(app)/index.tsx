@@ -15,38 +15,68 @@ import {
   Alert,
   Platform,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useProducts } from '../../hooks/useProducts';
-import { useCartStore } from '../../store/cartStore';
+import { useProducts } from '../../hooks/useProductsQuery';
+import { useCategories } from '../../hooks/useCategoriesQuery';
 import { useAuthStore } from '../../store/authStore';
+import { useUpdateCart } from '../../hooks/useCartsQuery';
 import { useTheme } from '../../theme/useTheme';
 import { ProductRow } from '../../components/ProductRow';
 import { Header } from '../../components/Header';
 import { CategoryChip } from '../../components/CategoryChip';
 import { Product } from '../../types';
+import { getCategoryIcon } from '../../utils/categoryLabels';
+
+const PAGE_SIZE = 10;
 
 export default function HomeScreen() {
   const router = useRouter();
   const { colors, borderRadius, shadowSm } = useTheme();
-  const { data: products, isLoading, isError, error, refetch, isFetching } = useProducts();
-  const addItem = useCartStore((state) => state.addItem);
+  const { width } = useWindowDimensions();
+  const numColumns = width >= 900 ? 4 : width >= 540 ? 2 : 1;
+  const [page, setPage] = useState(1);
+  const {
+    data: products = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useProducts();
+  const { data: categories = [] } = useCategories();
+  const addItem = useUpdateCart();
   const { user } = useAuthStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // Lọc sản phẩm theo từ khóa tìm kiếm và danh mục
+  const categoryNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    categories.forEach((item) => {
+      map[item.id] = item.name;
+    });
+    return map;
+  }, [categories]);
+
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       const matchName = product.name
         .toLowerCase()
         .includes(searchTerm.trim().toLowerCase());
       const matchCategory =
-        selectedCategory === 'all' || product.category === selectedCategory;
+        selectedCategory === 'all' || product.categoryId === selectedCategory;
       return matchName && matchCategory;
     });
   }, [products, searchTerm, selectedCategory]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedProducts = filteredProducts.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
+  );
 
   const handleProductPress = (product: Product) => {
     router.push({
@@ -55,12 +85,18 @@ export default function HomeScreen() {
     });
   };
 
-  const handleAddToCart = (product: Product) => {
-    addItem(product, 1);
-    if (Platform.OS === 'web') {
-      console.log(`Đã thêm "${product.name}" vào giỏ hàng`);
-    } else {
-      Alert.alert('Thành công', `Đã thêm "${product.name}" vào giỏ hàng!`);
+  const handleAddToCart = async (product: Product) => {
+    try {
+      await addItem.mutateAsync({ userId: user?.id ?? '', product, quantity: 1 });
+      if (Platform.OS === 'web') {
+        console.log(`Đã thêm "${product.name}" vào giỏ hàng`);
+      } else {
+        Alert.alert('Thành công', `Đã thêm "${product.name}" vào giỏ hàng!`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không thể thêm sản phẩm vào giỏ.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Lỗi', message);
     }
   };
 
@@ -155,24 +191,32 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoryScroll}
           >
-            {[
-              { key: 'all', label: 'Tất cả', icon: '✨' },
-              { key: 'electronics', label: 'Công nghệ', icon: '🎧' },
-              { key: 'clothing', label: 'Thời trang', icon: '👕' },
-              { key: 'documents', label: 'Văn phòng', icon: '📚' },
-              { key: 'other', label: 'Phụ kiện', icon: '🕶️' },
-            ].map((cat) => (
+            <CategoryChip
+              key="all"
+              label="Tất cả"
+              icon="✨"
+              selected={selectedCategory === 'all'}
+              onPress={() => {
+                setSelectedCategory('all');
+                setPage(1);
+              }}
+            />
+            {categories.map((cat) => (
               <CategoryChip
-                key={cat.key}
-                label={cat.label}
-                icon={cat.icon}
-                selected={selectedCategory === cat.key}
-                onPress={() => setSelectedCategory(cat.key)}
+                key={cat.id}
+                label={cat.name}
+                icon={getCategoryIcon(cat.id)}
+                selected={selectedCategory === cat.id}
+                onPress={() => {
+                  setSelectedCategory(cat.id);
+                  setPage(1);
+                }}
               />
             ))}
           </ScrollView>
         </View>
 
+        <View style={styles.gridViewport}>
         {/* Hiển thị 4 trạng thái: Loading, Error, Empty, Success */}
         {isLoading ? (
           <View style={styles.centerBox}>
@@ -206,7 +250,7 @@ export default function HomeScreen() {
               <Text style={styles.retryButtonText}>🔄 Thử lại ngay</Text>
             </Pressable>
           </View>
-        ) : filteredProducts.length === 0 ? (
+        ) : pagedProducts.length === 0 ? (
           <View style={styles.centerBox}>
             <Text style={styles.statusEmoji}>📦</Text>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
@@ -235,12 +279,17 @@ export default function HomeScreen() {
         ) : (
           /* Danh sách sản phẩm: Responsive Grid linh hoạt với flexWrap wrap, gap: 16 */
           <FlatList
-            data={filteredProducts}
+            style={{ flex: 1, width: '100%' }}
+            key={`product-grid-${numColumns}`}
+            data={pagedProducts}
+            numColumns={numColumns}
             keyExtractor={(item) => String(item.id)}
             contentContainerStyle={styles.gridContent}
+            columnWrapperStyle={numColumns > 1 ? styles.gridRow : undefined}
             renderItem={({ item }) => (
               <ProductRow
                 product={item}
+                categoryName={categoryNameById[item.categoryId]}
                 onPress={handleProductPress}
                 onAddToCart={handleAddToCart}
               />
@@ -256,6 +305,42 @@ export default function HomeScreen() {
             }
           />
         )}
+        </View>
+        {!isLoading && !isError && pagedProducts.length > 0 && totalPages > 1 ? (
+          <View style={[styles.paginationRow, { marginTop: 20 }]}>
+                  <Pressable
+                    disabled={safePage <= 1}
+                    onPress={() => setPage((prev) => Math.max(1, prev - 1))}
+                    style={[
+                      styles.pageBtn,
+                      {
+                        backgroundColor: safePage <= 1 ? colors.border : colors.accent,
+                        borderRadius: borderRadius.button,
+                        opacity: safePage <= 1 ? 0.6 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.pageBtnText}>← Trước</Text>
+                  </Pressable>
+                  <Text style={[styles.pageInfo, { color: colors.text }]}>
+                    Trang {safePage}/{totalPages}
+                  </Text>
+                  <Pressable
+                    disabled={safePage >= totalPages}
+                    onPress={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                    style={[
+                      styles.pageBtn,
+                      {
+                        backgroundColor: safePage >= totalPages ? colors.border : colors.accent,
+                        borderRadius: borderRadius.button,
+                        opacity: safePage >= totalPages ? 0.6 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.pageBtnText}>Sau →</Text>
+                  </Pressable>
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -271,6 +356,11 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     maxWidth: '100%', // Full width, không bóp vào giữa
+  },
+  gridViewport: {
+    flex: 1,
+    width: '100%',
+    minHeight: 0,
   },
   greetingCard: {
     flexDirection: 'row',
@@ -347,11 +437,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   gridContent: {
-    flexDirection: 'row',
-    flexWrap: 'wrap', // Hiển thị lưới linh hoạt
-    gap: 16, // Khoảng cách 16px giữa các sản phẩm
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 20,
+    rowGap: 16,
+  },
+  gridRow: {
+    gap: 16,
     justifyContent: 'flex-start',
   },
   centerBox: {
@@ -398,5 +489,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     marginBottom: 16,
+  },
+  paginationRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    gap: 16,
+    paddingVertical: 8,
+  },
+  pageBtn: {
+    minHeight: 40,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  pageInfo: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

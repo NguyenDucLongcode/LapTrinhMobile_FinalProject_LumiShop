@@ -15,8 +15,11 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useProduct } from '../../../hooks/useProduct';
-import { useCartStore } from '../../../store/cartStore';
+import { safeGoBack } from '../../../utils/safeGoBack';
+import { useProduct } from '../../../hooks/useProductsQuery';
+import { useCategory } from '../../../hooks/useCategoriesQuery';
+import { useCart, useUpdateCart } from '../../../hooks/useCartsQuery';
+import { useAuthStore } from '../../../store/authStore';
 import { useTheme } from '../../../theme/useTheme';
 import { formatCurrency } from '../../../utils/calculateTotal';
 
@@ -26,9 +29,12 @@ export default function ProductDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : '';
 
-  const { product, isLoading, isError, error, refetch } = useProduct(id);
-  const addItem = useCartStore((state) => state.addItem);
-  const totalCartItems = useCartStore((state) => state.getTotalItems());
+  const { data: product, isLoading, isError, error, refetch } = useProduct(id);
+  const { data: category } = useCategory(product?.categoryId ?? '');
+  const addItem = useUpdateCart();
+  const userId = useAuthStore((state) => state.user?.id ?? '');
+  const { data: cart } = useCart(userId);
+  const totalCartItems = (cart?.items ?? []).reduce((sum, item) => sum + item.quantity, 0);
 
   const [quantity, setQuantity] = useState(1);
 
@@ -43,9 +49,9 @@ export default function ProductDetailScreen() {
     setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
-    addItem(product, quantity);
+    await addItem.mutateAsync({ userId, product, quantity });
 
     if (Platform.OS === 'web') {
       alert(`Đã thêm ${quantity} x "${product.name}" vào giỏ hàng LumiShop!`);
@@ -115,8 +121,8 @@ export default function ProductDetailScreen() {
           <Pressable
             accessible={true}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại danh sách"
-            onPress={() => router.back()}
+            accessibilityLabel={router.canGoBack() ? 'Quay lại danh sách' : 'Về trang chủ'}
+            onPress={() => safeGoBack(router)}
             style={({ pressed }) => [
               styles.floatingBackBtn,
               {
@@ -159,7 +165,7 @@ export default function ProductDetailScreen() {
           <View style={styles.badgeRow}>
             <View style={[styles.categoryPill, { backgroundColor: colors.accentLight }]}>
               <Text style={[styles.categoryPillText, { color: colors.accent }]}>
-                {product.category?.toUpperCase() || 'LUMI'}
+                {(category?.name || 'LUMI').toUpperCase()}
               </Text>
             </View>
 

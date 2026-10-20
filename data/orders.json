@@ -1,0 +1,128 @@
+[
+  {
+    "id": "1",
+    "userId": "2",
+    "items": [
+      {
+        "productId": "1",
+        "name": "Tai Nghe Không Dây Sony WH-1000XM5 Chống Ồn",
+        "price": 6490000,
+        "quantity": 1
+      }
+    ],
+    "totalAmount": 6490000,
+    "status": "delivered",
+    "shippingAddress": "12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh",
+    "createdAt": "2026-09-12T09:30:00.000Z"
+  },
+  {
+    "id": "2",
+    "userId": "3",
+    "items": [
+      {
+        "productId": "8",
+        "name": "Áo Thun Unisex Cotton Pima Thoáng Mát Lumi Basic",
+        "price": 250000,
+        "quantity": 2
+      },
+      {
+        "productId": "13",
+        "name": "Quần Jeans Ống Suông Baggy Unisex Phá Cách",
+        "price": 450000,
+        "quantity": 1
+      }
+    ],
+    "totalAmount": 950000,
+    "status": "confirmed",
+    "shippingAddress": "45 Trần Phú, TP. Biên Hòa, Đồng Nai",
+    "createdAt": "2026-10-02T14:15:00.000Z"
+  },
+  {
+    "id": "3",
+    "userId": "2",
+    "items": [
+      {
+        "productId": "14",
+        "name": "Sổ Tay Bìa Da Thủ Công Moleskine Ruled Notebook",
+        "price": 380000,
+        "quantity": 1
+      },
+      {
+        "productId": "15",
+        "name": "Bút Ký Kim Loại Thân Nhôm Parker Jotter Original",
+        "price": 320000,
+        "quantity": 1
+      }
+    ],
+    "totalAmount": 700000,
+    "status": "pending",
+    "shippingAddress": "88 Lê Lợi, Quận Hải Châu, Đà Nẵng",
+    "createdAt": "2026-10-15T08:05:00.000Z"
+  },
+  {
+    "id": "4",
+    "userId": "3",
+    "items": [
+      {
+        "productId": "18",
+        "name": "Bình Giữ Nhiệt Thép Không Gỉ Stanley Classic 750ml",
+        "price": 680000,
+        "quantity": 1
+      },
+      {
+        "productId": "21",
+        "name": "Nến Thơm Tinh Dầu Tự Nhiên Lumi Scented Candle",
+        "price": 280000,
+        "quantity": 2
+      }
+    ],
+    "totalAmount": 1240000,
+    "status": "delivered",
+    "shippingAddress": "21 Phan Đình Phùng, Ba Đình, Hà Nội",
+    "createdAt": "2026-08-21T11:40:00.000Z"
+  },
+  {
+    "id": "5",
+    "userId": "2",
+    "items": [
+      {
+        "productId": "20",
+        "name": "Balo Du Lịch Chống Rạch Nước Mark Ryden Smart",
+        "price": 890000,
+        "quantity": 1
+      },
+      {
+        "productId": "22",
+        "name": "Ví Nam Da Bò Sáp Dáng Đứng Mini Card Holder",
+        "price": 320000,
+        "quantity": 1
+      }
+    ],
+    "totalAmount": 1210000,
+    "status": "cancelled",
+    "shippingAddress": "6 Võ Thị Sáu, TP. Vũng Tàu, Bà Rịa - Vũng Tàu",
+    "createdAt": "2026-10-08T16:22:00.000Z"
+  },
+  {
+    "userId": "1",
+    "items": [
+      {
+        "productId": "2",
+        "name": "Bàn Phím Cơ Không Dây Keychron K2 Nhôm RGB",
+        "price": 1950000,
+        "quantity": 3
+      },
+      {
+        "productId": "6",
+        "name": "Máy Ảnh Mirrorless Fujifilm X-T30 II Kèm Ống Kính",
+        "price": 22500000,
+        "quantity": 1
+      }
+    ],
+    "totalAmount": 28350000,
+    "shippingAddress": "Quản Trị Viên | 0901234567 | Số 123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh",
+    "status": "pending",
+    "createdAt": "2026-10-20T12:38:45.552Z",
+    "id": "J8-B_Db"
+  }
+]

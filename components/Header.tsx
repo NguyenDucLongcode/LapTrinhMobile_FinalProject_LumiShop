@@ -6,8 +6,9 @@ import { View, Text, StyleSheet, Pressable, Alert, Platform } from 'react-native
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/useTheme';
-import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
+import { useCart } from '../hooks/useCartsQuery';
+import { safeGoBack } from '../utils/safeGoBack';
 
 interface HeaderProps {
   title?: string;
@@ -28,8 +29,9 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const router = useRouter();
   const { colors, shadowSm } = useTheme();
-  const totalItems = useCartStore((state) => state.getTotalItems());
   const { user, logout } = useAuthStore();
+  const { data: cart } = useCart(user?.id ?? '');
+  const totalItems = (cart?.items ?? []).reduce((sum, item) => sum + item.quantity, 0);
 
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
@@ -70,8 +72,8 @@ export const Header: React.FC<HeaderProps> = ({
             <Pressable
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel="Quay lại"
-              onPress={() => router.back()}
+              accessibilityLabel={router.canGoBack() ? 'Quay lại' : 'Về trang chủ'}
+              onPress={() => safeGoBack(router)}
               hitSlop={8}
               style={({ pressed }) => [
                 styles.iconBtn,
@@ -81,7 +83,11 @@ export const Header: React.FC<HeaderProps> = ({
                 },
               ]}
             >
-              <Ionicons name="arrow-back" size={22} color={colors.text} />
+              <Ionicons
+                name={router.canGoBack() ? 'arrow-back' : 'home-outline'}
+                size={22}
+                color={colors.text}
+              />
             </Pressable>
             {title ? (
               <Text numberOfLines={1} style={[styles.screenTitle, { color: colors.text }]}>

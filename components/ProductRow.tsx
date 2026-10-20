@@ -1,7 +1,7 @@
 // components/ProductRow.tsx
 // Card sản phẩm LumiShop: maxWidth 280px, tỉ lệ ảnh 1:1 expo-image, rating sao vàng và nút thêm tròn nhỏ
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { Product } from '../types';
@@ -12,36 +12,41 @@ interface ProductRowProps {
   product: Product;
   onPress: (product: Product) => void;
   onAddToCart?: (product: Product) => void;
+  categoryName?: string;
 }
 
 export const ProductRow: React.FC<ProductRowProps> = ({
   product,
   onPress,
   onAddToCart,
+  categoryName,
 }) => {
   const { colors, borderRadius, shadow } = useTheme();
+  const [imageFailed, setImageFailed] = useState(false);
 
   return (
-    <Pressable
-      accessible={true}
-      accessibilityRole="button"
-      accessibilityLabel={`Sản phẩm ${product.name}, giá ${formatCurrency(product.price)}`}
-      onPress={() => onPress(product)}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.card,
         {
           backgroundColor: colors.card,
           borderRadius: borderRadius.card,
           borderColor: colors.border,
-          transform: [{ scale: pressed ? 0.97 : 1 }],
         },
         shadow,
       ]}
     >
       {/* Ảnh sản phẩm tỉ lệ 1:1 dùng expo-image */}
-      <View style={styles.imageContainer}>
+      <Pressable
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={`Xem sản phẩm ${product.name}`}
+        onPress={() => onPress(product)}
+        style={styles.imageContainer}
+      >
         <Image
-          source={{ uri: product.image }}
+          source={{ uri: imageFailed ? 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80' : product.image }}
+          onError={() => setImageFailed(true)}
           style={[
             styles.image,
             {
@@ -55,13 +60,20 @@ export const ProductRow: React.FC<ProductRowProps> = ({
         {/* Badge danh mục nhỏ */}
         <View style={[styles.categoryBadge, { backgroundColor: 'rgba(15, 23, 42, 0.65)' }]}>
           <Text style={styles.categoryText}>
-            {product.category?.toUpperCase() || 'LUMI'}
+            {(categoryName || 'LUMI').toUpperCase()}
           </Text>
         </View>
-      </View>
+      </Pressable>
 
       {/* Nội dung chi tiết */}
       <View style={styles.content}>
+        <Pressable
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={`Xem sản phẩm ${product.name}, giá ${formatCurrency(product.price)}`}
+          onPress={() => onPress(product)}
+          style={styles.detailsPressable}
+        >
         {/* Tên sản phẩm tối đa 2 dòng */}
         <Text
           numberOfLines={2}
@@ -80,6 +92,7 @@ export const ProductRow: React.FC<ProductRowProps> = ({
             • Đã bán {product.stock ? (100 - product.stock > 0 ? 100 - product.stock : 24) : 15}
           </Text>
         </View>
+        </Pressable>
 
         {/* Khối giá tiền & Nút cộng (+) */}
         <View style={styles.footerRow}>
@@ -98,10 +111,7 @@ export const ProductRow: React.FC<ProductRowProps> = ({
               accessibilityRole="button"
               accessibilityLabel={`Thêm ${product.name} vào giỏ hàng`}
               hitSlop={8}
-              onPress={(e) => {
-                e.stopPropagation?.();
-                onAddToCart(product);
-              }}
+              onPress={() => onAddToCart(product)}
               style={({ pressed }) => [
                 styles.addBtn,
                 {
@@ -115,17 +125,17 @@ export const ProductRow: React.FC<ProductRowProps> = ({
           )}
         </View>
       </View>
-    </Pressable>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
+    flex: 1,
     width: '100%',
-    minWidth: 220,
-    maxWidth: 280, // Đảm bảo mỗi ô sản phẩm không bao giờ to hơn 280px
+    minWidth: 0,
     flexGrow: 1,
-    marginBottom: 16,
+    marginBottom: 0,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -158,6 +168,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     flex: 1,
   },
+  detailsPressable: { flex: 1 },
   name: {
     fontSize: 14,
     fontWeight: '700',

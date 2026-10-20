@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1",
+    "username": "admin",
+    "password": "123",
+    "role": "admin",
+    "name": "Quản Trị Viên",
+    "email": "admin@lumishop.vn"
+  },
+  {
+    "id": "2",
+    "username": "user",
+    "password": "123",
+    "role": "customer",
+    "name": "Khách Hàng Mẫu",
+    "email": "user@lumishop.vn"
+  },
+  {
+    "id": "3",
+    "username": "linh",
+    "password": "123",
+    "role": "customer",
+    "name": "Nguyễn Mỹ Linh",
+    "email": "linh@lumishop.vn"
+  }
+]
