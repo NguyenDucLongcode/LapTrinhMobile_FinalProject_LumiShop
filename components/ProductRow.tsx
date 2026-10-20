@@ -13,6 +13,7 @@ interface ProductRowProps {
   onPress: (product: Product) => void;
   onAddToCart?: (product: Product) => void;
   categoryName?: string;
+  width: number;
 }
 
 export const ProductRow: React.FC<ProductRowProps> = ({
@@ -20,6 +21,7 @@ export const ProductRow: React.FC<ProductRowProps> = ({
   onPress,
   onAddToCart,
   categoryName,
+  width,
 }) => {
   const { colors, borderRadius, shadow } = useTheme();
   const [imageFailed, setImageFailed] = useState(false);
@@ -32,6 +34,7 @@ export const ProductRow: React.FC<ProductRowProps> = ({
           backgroundColor: colors.card,
           borderRadius: borderRadius.card,
           borderColor: colors.border,
+          width,
         },
         shadow,
       ]}
@@ -131,10 +134,7 @@ export const ProductRow: React.FC<ProductRowProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    flex: 1,
-    width: '100%',
     minWidth: 0,
-    flexGrow: 1,
     marginBottom: 0,
     borderWidth: 1,
     overflow: 'hidden',

@@ -124,5 +124,49 @@
     "status": "pending",
     "createdAt": "2026-10-20T12:38:45.552Z",
     "id": "J8-B_Db"
+  },
+  {
+    "userId": "1",
+    "items": [
+      {
+        "productId": "2",
+        "name": "Bàn Phím Cơ Không Dây Keychron K2 Nhôm RGB",
+        "price": 1950000,
+        "quantity": 2
+      },
+      {
+        "productId": "4",
+        "name": "Loa Bluetooth Marshall Emberton II Âm Thanh Đa Hướng",
+        "price": 3490000,
+        "quantity": 1
+      }
+    ],
+    "totalAmount": 7390000,
+    "shippingAddress": "Quản Trị Viên | 0901234567 | Số 123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh",
+    "status": "pending",
+    "createdAt": "2026-10-20T14:23:20.480Z",
+    "id": "ZPpnBfW"
+  },
+  {
+    "userId": "1",
+    "items": [
+      {
+        "productId": "2",
+        "name": "Bàn Phím Cơ Không Dây Keychron K2 Nhôm RGB",
+        "price": 1950000,
+        "quantity": 1
+      },
+      {
+        "productId": "6",
+        "name": "Máy Ảnh Mirrorless Fujifilm X-T30 II Kèm Ống Kính",
+        "price": 22500000,
+        "quantity": 2
+      }
+    ],
+    "totalAmount": 44602500,
+    "shippingAddress": "Quản Trị Viên | 0901234567 | Số 123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh",
+    "status": "pending",
+    "createdAt": "2026-10-20T14:23:50.920Z",
+    "id": "0X15P3y"
   }
 ]

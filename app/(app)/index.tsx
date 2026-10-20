@@ -35,7 +35,10 @@ export default function HomeScreen() {
   const router = useRouter();
   const { colors, borderRadius, shadowSm } = useTheme();
   const { width } = useWindowDimensions();
-  const numColumns = width >= 900 ? 4 : width >= 540 ? 2 : 1;
+  const numColumns = width >= 900 ? 4 : width >= 600 ? 3 : 2;
+  const GAP = 16;
+  const PADDING = 20;
+  const cardWidth = (width - PADDING * 2 - GAP * (numColumns - 1)) / numColumns;
   const [page, setPage] = useState(1);
   const {
     data: products = [],
@@ -77,6 +80,13 @@ export default function HomeScreen() {
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE
   );
+  const productGridData: (Product | null)[] = [
+    ...pagedProducts,
+    ...Array.from(
+      { length: (numColumns - (pagedProducts.length % numColumns)) % numColumns },
+      () => null
+    ),
+  ];
 
   const handleProductPress = (product: Product) => {
     router.push({
@@ -281,18 +291,19 @@ export default function HomeScreen() {
           <FlatList
             style={{ flex: 1, width: '100%' }}
             key={`product-grid-${numColumns}`}
-            data={pagedProducts}
+            data={productGridData}
             numColumns={numColumns}
-            keyExtractor={(item) => String(item.id)}
+            keyExtractor={(item, index) => item ? String(item.id) : `placeholder-${index}`}
             contentContainerStyle={styles.gridContent}
-            columnWrapperStyle={numColumns > 1 ? styles.gridRow : undefined}
+            columnWrapperStyle={numColumns > 1 ? [styles.gridRow, { columnGap: GAP }] : undefined}
             renderItem={({ item }) => (
-              <ProductRow
+              item ? <ProductRow
                 product={item}
+                width={cardWidth}
                 categoryName={categoryNameById[item.categoryId]}
                 onPress={handleProductPress}
                 onAddToCart={handleAddToCart}
-              />
+              /> : <View style={{ width: cardWidth }} />
             )}
             refreshControl={
               <RefreshControl

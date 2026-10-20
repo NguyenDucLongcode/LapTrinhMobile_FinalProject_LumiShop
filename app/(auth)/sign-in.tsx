@@ -25,8 +25,8 @@ export default function SignInScreen() {
   const persistSession = useAuthStore((state) => state.persistSession);
   const { mutateAsync: login, isPending: isLoading } = useLogin();
 
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -51,12 +51,6 @@ export default function SignInScreen() {
         Alert.alert('Đăng nhập thất bại', msg);
       }
     }
-  };
-
-  const fillQuickAccount = (user: string, pass: string) => {
-    setUsername(user);
-    setPassword(pass);
-    setErrorMessage('');
   };
 
   return (
@@ -136,6 +130,9 @@ export default function SignInScreen() {
                   setUsername(text);
                   setErrorMessage('');
                 }}
+                autoComplete="new-password"
+                textContentType="none"
+                importantForAutofill="no"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -166,6 +163,9 @@ export default function SignInScreen() {
                   setPassword(text);
                   setErrorMessage('');
                 }}
+                autoComplete="new-password"
+                textContentType="none"
+                importantForAutofill="no"
                 autoCapitalize="none"
               />
               <Pressable
@@ -208,50 +208,11 @@ export default function SignInScreen() {
               <Text style={[styles.linkText, { color: colors.muted }]}>Quên mật khẩu?</Text>
             </Pressable>
             <Text style={{ color: colors.muted }}>•</Text>
-            <Pressable onPress={() => fillQuickAccount('khachhang', '123')}>
+            <Pressable onPress={() => Alert.alert('Thông báo', 'Tính năng đăng ký đang được phát triển!')}>
               <Text style={[styles.linkText, { color: colors.accent, fontWeight: '700' }]}>Đăng ký mới</Text>
             </Pressable>
           </View>
 
-          {/* Tài khoản mẫu tiện lợi */}
-          <View style={[styles.demoSection, { borderTopColor: colors.border }]}>
-            <Text style={[styles.demoTitle, { color: colors.muted }]}>
-              Tài khoản dùng thử nhanh:
-            </Text>
-            <View style={styles.demoChipsRow}>
-              <Pressable
-                onPress={() => fillQuickAccount('admin', '123')}
-                style={[
-                  styles.demoChip,
-                  {
-                    backgroundColor: colors.accentLight,
-                    borderColor: colors.accent,
-                    borderRadius: borderRadius.pill,
-                  },
-                ]}
-              >
-                <Text style={[styles.demoChipText, { color: colors.accent }]}>
-                  🛡️ Admin (admin/123)
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => fillQuickAccount('user', '123')}
-                style={[
-                  styles.demoChip,
-                  {
-                    backgroundColor: colors.bg,
-                    borderColor: colors.border,
-                    borderRadius: borderRadius.pill,
-                  },
-                ]}
-              >
-                <Text style={[styles.demoChipText, { color: colors.text }]}>
-                  👤 Khách (user/123)
-                </Text>
-              </Pressable>
-            </View>
-          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -374,30 +335,5 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 13,
-  },
-  demoSection: {
-    borderTopWidth: 1,
-    paddingTop: 16,
-    alignItems: 'center',
-  },
-  demoTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  demoChipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    justifyContent: 'center',
-  },
-  demoChip: {
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-  },
-  demoChipText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
 });
