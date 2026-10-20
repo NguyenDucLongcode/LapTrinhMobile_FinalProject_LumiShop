@@ -1,7 +1,7 @@
 // app/(app)/admin/vouchers.tsx
 // Quản lý Voucher LumiShop: Xem voucher có sẵn, Thêm mã mới và Xóa voucher với giao diện bo tròn mềm mại
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -20,8 +20,11 @@ import { Redirect } from 'expo-router';
 import { useTheme } from '../../../theme/useTheme';
 import { Header } from '../../../components/Header';
 import { formatCurrency } from '../../../utils/calculateTotal';
-import axiosClient from '../../../api/axiosClient';
-import { initialVouchers } from '../../../data/products';
+import {
+  useVouchers,
+  useCreateVoucher,
+  useDeleteVoucher,
+} from '../../../hooks/useVouchersQuery';
 import { Voucher } from '../../../types';
 import { useAuthStore } from '../../../store/authStore';
 
@@ -29,8 +32,10 @@ export default function AdminVouchersScreen() {
   const { colors, borderRadius, shadow, shadowSm } = useTheme();
   const { user } = useAuthStore();
 
-  const [vouchers, setVouchers] = useState<Voucher[]>(initialVouchers);
-  const [isLoading, setIsLoading] = useState(false);
+  const { vouchers, isLoading } = useVouchers();
+  const createVoucherMutation = useCreateVoucher();
+  const deleteVoucherMutation = useDeleteVoucher();
+
   const [modalVisible, setModalVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,27 +43,6 @@ export default function AdminVouchersScreen() {
   const [code, setCode] = useState('');
   const [discount, setDiscount] = useState('');
   const [minOrder, setMinOrder] = useState('200000');
-
-  const fetchVouchers = async () => {
-    setIsLoading(true);
-    try {
-      const res = await axiosClient.get<Voucher[]>('/vouchers');
-      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-        setVouchers(res.data);
-      } else {
-        setVouchers(initialVouchers);
-      }
-    } catch (e) {
-      console.warn('Lỗi fetch vouchers từ server, dùng initialVouchers:', e);
-      setVouchers(initialVouchers);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchVouchers();
-  }, []);
 
   // Bảo vệ phân quyền: chỉ admin mới được vào
   if (!user || user.role !== 'admin') {
@@ -114,13 +98,11 @@ export default function AdminVouchersScreen() {
     };
 
     try {
-      await axiosClient.post('/vouchers', newVoucher);
-      setVouchers((prev) => [...prev, newVoucher]);
+      await createVoucherMutation.mutateAsync(newVoucher);
       showAlert('Thành công', `Đã thêm voucher "${cleanCode}"!`);
     } catch (e: any) {
-      console.warn('Lỗi gọi API thêm voucher, thêm vào state local:', e);
-      setVouchers((prev) => [...prev, newVoucher]);
-      showAlert('Thông báo', `Đã lưu voucher "${cleanCode}" vào bộ nhớ tạm (JSON Server offline)!`);
+      console.warn('Lỗi gọi API thêm voucher:', e);
+      showAlert('Lỗi', `Không thể thêm voucher!\n${e?.message || ''}`);
     } finally {
       setIsSubmitting(false);
       resetForm();
@@ -130,13 +112,10 @@ export default function AdminVouchersScreen() {
   const handleDeleteVoucher = (voucherId: string, voucherCode: string) => {
     const doDelete = async () => {
       try {
-        await axiosClient.delete(`/vouchers/${voucherId}`);
-        setVouchers((prev) => prev.filter((v) => v.id !== voucherId));
+        await deleteVoucherMutation.mutateAsync(voucherId);
       } catch (e: any) {
         console.warn('Lỗi gọi API xóa voucher:', e);
-        // Xóa khỏi local state để UI phản hồi mượt mà
-        setVouchers((prev) => prev.filter((v) => v.id !== voucherId));
-        showAlert('Thông báo', 'Đã xóa voucher khỏi bộ nhớ tạm (JSON Server offline)!');
+        showAlert('Lỗi', 'Không thể xóa voucher do JSON Server offline!');
       }
     };
 

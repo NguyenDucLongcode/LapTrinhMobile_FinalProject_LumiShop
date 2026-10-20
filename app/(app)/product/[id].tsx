@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useProduct } from '../../../hooks/useProduct';
+import { useProduct } from '../../../hooks/useProductsQuery';
 import { useCartStore } from '../../../store/cartStore';
 import { useTheme } from '../../../theme/useTheme';
 import { formatCurrency } from '../../../utils/calculateTotal';

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "electronics",
+    "name": "Công nghệ",
+    "description": "Thiết bị điện tử, âm thanh, tai nghe, đồng hồ và phụ kiện số cao cấp"
+  },
+  {
+    "id": "clothing",
+    "name": "Thời trang",
+    "description": "Quần áo thời trang nam nữ phong cách hiện đại, thanh lịch"
+  },
+  {
+    "id": "documents",
+    "name": "Văn phòng phẩm",
+    "description": "Sổ tay cao cấp, bút ký, tài liệu và văn phòng phẩm chất lượng"
+  },
+  {
+    "id": "other",
+    "name": "Phụ kiện đời sống",
+    "description": "Bình giữ nhiệt, kính mát, balo du lịch và phụ kiện tiện ích"
+  },
+  {
+    "id": "books",
+    "name": "Sách & Tri thức",
+    "description": "Sách kinh tế, kỹ năng sống và ấn phẩm phát triển bản thân"
+  }
+]

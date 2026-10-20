@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types';
-import axiosClient from '../api/axiosClient';
+import userApi from '../api/userApi';
 
 const TOKEN_KEY = 'shopabc_auth_token';
 const USER_KEY = 'shopabc_auth_user';
@@ -81,29 +81,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       let apiOnline = false;
 
       try {
-        const response = await axiosClient.get<any[]>(`/users?username=${encodeURIComponent(username.trim())}`);
+        matchedUser = await userApi.login(username, password);
         apiOnline = true;
-        if (response.data && response.data.length > 0) {
-          const found = response.data[0];
-          // Kiểm tra mật khẩu nghiêm ngặt — phải khớp chính xác
-          if (found.password === password) {
-            matchedUser = {
-              id: String(found.id),
-              username: found.username,
-              name: found.name || found.username,
-              role: found.role === 'admin' ? 'admin' : 'customer',
-            };
-          } else {
-            // Tìm thấy user nhưng sai mật khẩu → từ chối ngay, không fallback
-            set({ isLoading: false });
-            return false;
-          }
-        } else {
-          // Không tìm thấy user trong DB khi API online → từ chối, không fallback
+      } catch (apiErr: any) {
+        if (apiErr.message === 'Sai tên đăng nhập hoặc mật khẩu!') {
+          // Sai mật khẩu hoặc không tồn tại khi API đang online -> từ chối
           set({ isLoading: false });
           return false;
         }
-      } catch (apiErr) {
         // Chỉ chạy fallback khi JSON Server thực sự bị tắt (network/connection error)
         console.warn('Không gọi được API users, sử dụng tài khoản cục bộ:', apiErr);
         apiOnline = false;

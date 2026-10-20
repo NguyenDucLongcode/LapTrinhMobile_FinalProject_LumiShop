@@ -1,0 +1,62 @@
+[
+  {
+    "id": "1",
+    "code": "GIAM10",
+    "discount": 10,
+    "discountPercent": 10,
+    "minOrderValue": 100000,
+    "minOrderAmount": 100000,
+    "maxDiscount": 50000,
+    "startDate": "2026-01-01T00:00:00.000Z",
+    "endDate": "2026-12-31T23:59:59.000Z",
+    "status": "active"
+  },
+  {
+    "id": "2",
+    "code": "GIAM20",
+    "discount": 20,
+    "discountPercent": 20,
+    "minOrderValue": 200000,
+    "minOrderAmount": 200000,
+    "maxDiscount": 100000,
+    "startDate": "2026-01-01T00:00:00.000Z",
+    "endDate": "2026-12-31T23:59:59.000Z",
+    "status": "active"
+  },
+  {
+    "id": "3",
+    "code": "FREESHIP",
+    "discount": 30000,
+    "discountPercent": 0,
+    "minOrderValue": 150000,
+    "minOrderAmount": 150000,
+    "maxDiscount": 30000,
+    "startDate": "2026-01-01T00:00:00.000Z",
+    "endDate": "2026-12-31T23:59:59.000Z",
+    "status": "active"
+  },
+  {
+    "id": "4",
+    "code": "VIP50",
+    "discount": 50,
+    "discountPercent": 50,
+    "minOrderValue": 500000,
+    "minOrderAmount": 500000,
+    "maxDiscount": 300000,
+    "startDate": "2026-01-01T00:00:00.000Z",
+    "endDate": "2026-12-31T23:59:59.000Z",
+    "status": "active"
+  },
+  {
+    "id": "5",
+    "code": "SALE30",
+    "discount": 30,
+    "discountPercent": 30,
+    "minOrderValue": 300000,
+    "minOrderAmount": 300000,
+    "maxDiscount": 150000,
+    "startDate": "2026-01-01T00:00:00.000Z",
+    "endDate": "2026-12-31T23:59:59.000Z",
+    "status": "active"
+  }
+]

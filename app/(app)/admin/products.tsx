@@ -18,19 +18,22 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Redirect } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
-import { useProducts } from '../../../hooks/useProducts';
+import {
+  useProducts,
+  useCreateProduct,
+  useDeleteProduct,
+} from '../../../hooks/useProductsQuery';
 import { useTheme } from '../../../theme/useTheme';
 import { Header } from '../../../components/Header';
 import { formatCurrency } from '../../../utils/calculateTotal';
-import axiosClient from '../../../api/axiosClient';
 import { Product } from '../../../types';
 import { useAuthStore } from '../../../store/authStore';
 
 export default function AdminProductsScreen() {
   const { colors, borderRadius, shadow, shadowSm } = useTheme();
-  const queryClient = useQueryClient();
   const { data: products, isLoading } = useProducts();
+  const createProductMutation = useCreateProduct();
+  const deleteProductMutation = useDeleteProduct();
   const { user } = useAuthStore();
 
   // Tất cả useState phải khai báo trước mọi early return (Rules of Hooks)
@@ -99,10 +102,9 @@ export default function AdminProductsScreen() {
     };
 
     try {
-      await axiosClient.post('/products', newProduct);
+      await createProductMutation.mutateAsync(newProduct);
       setIsSubmitting(false);
       resetForm();
-      queryClient.invalidateQueries({ queryKey: ['products'] });
       showAlert('Thành công', 'Đã thêm sản phẩm mới vào LumiShop!');
     } catch (e: any) {
       setIsSubmitting(false);
@@ -115,8 +117,7 @@ export default function AdminProductsScreen() {
   const handleDeleteProduct = (productId: string, productName: string) => {
     const doDelete = async () => {
       try {
-        await axiosClient.delete(`/products/${productId}`);
-        queryClient.invalidateQueries({ queryKey: ['products'] });
+        await deleteProductMutation.mutateAsync(productId);
       } catch (e: any) {
         console.warn('Lỗi gọi API xóa sản phẩm:', e);
         showAlert('Lỗi xóa sản phẩm', e?.message || 'Không thể xóa sản phẩm do JSON Server offline!');

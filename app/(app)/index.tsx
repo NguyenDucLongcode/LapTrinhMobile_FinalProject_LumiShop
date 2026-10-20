@@ -16,7 +16,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useProducts } from '../../hooks/useProducts';
+import { useProducts } from '../../hooks/useProductsQuery';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/useTheme';

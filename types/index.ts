@@ -1,11 +1,12 @@
 // types/index.ts
-// Định nghĩa các interface và kiểu dữ liệu cho toàn bộ ứng dụng
+// Định nghĩa các interface và kiểu dữ liệu chuẩn mực cho toàn bộ hệ thống LumiShop
 
 export interface Product {
   id: string;
   name: string;
   price: number;
   category: string;
+  categoryId?: string;
   image: string;
   stock: number;
   description: string;
@@ -15,6 +16,7 @@ export interface Product {
 export interface Category {
   id: string;
   name: string;
+  description?: string;
 }
 
 export interface CartItem {
@@ -26,20 +28,33 @@ export interface CartItem {
 export interface Voucher {
   id: string;
   code: string;
-  discount: number; // Tỷ lệ giảm giá (%) hoặc số tiền giảm
+  discount: number; // Mức giảm giá (%) hoặc số tiền giảm
+  discountPercent?: number; // Tỷ lệ phần trăm giảm giá
+  minOrderValue?: number; // Giá trị đơn hàng tối thiểu
+  maxDiscount?: number; // Mức giảm giá tối đa
+  startDate?: string;
+  endDate?: string;
   status: 'active' | 'inactive' | 'expired';
   minOrderAmount?: number;
 }
 
+export interface OrderItem {
+  productId: string;
+  quantity: number;
+  price: number;
+}
+
 export interface Order {
   id?: string;
-  items: CartItem[];
+  userId?: string;
+  items: CartItem[] | OrderItem[] | any[];
   totalAmount: number;
-  discountAmount: number;
-  finalAmount: number;
-  customerName: string;
-  customerPhone: string;
-  customerAddress: string;
+  discountAmount?: number;
+  finalAmount?: number;
+  customerName?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  shippingAddress?: string;
   voucherCode?: string;
   status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
   createdAt: string;
@@ -48,8 +63,12 @@ export interface Order {
 export interface User {
   id: string;
   username: string;
-  name?: string;
+  password?: string;
   role?: 'admin' | 'customer';
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
 }
 
 export interface AuthState {

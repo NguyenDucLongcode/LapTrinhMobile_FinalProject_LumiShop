@@ -1,0 +1,170 @@
+[
+  {
+    "id": "1001",
+    "userId": "2",
+    "customerName": "Nguyễn Văn An",
+    "customerPhone": "0912345678",
+    "customerAddress": "Số 45 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+    "shippingAddress": "Số 45 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+    "items": [
+      {
+        "productId": "1",
+        "quantity": 1,
+        "price": 6490000,
+        "product": {
+          "id": "1",
+          "name": "Tai Nghe Không Dây Sony WH-1000XM5 Chống Ồn",
+          "price": 6490000,
+          "category": "electronics",
+          "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80",
+          "stock": 15,
+          "description": "Tai nghe chống ồn đỉnh cao thế hệ mới từ Sony.",
+          "rating": 5
+        }
+      }
+    ],
+    "totalAmount": 6490000,
+    "discountAmount": 0,
+    "finalAmount": 6490000,
+    "status": "delivered",
+    "createdAt": "2026-03-15T09:30:00.000Z"
+  },
+  {
+    "id": "1002",
+    "userId": "2",
+    "customerName": "Nguyễn Văn An",
+    "customerPhone": "0912345678",
+    "customerAddress": "Số 45 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+    "shippingAddress": "Số 45 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+    "items": [
+      {
+        "productId": "8",
+        "quantity": 2,
+        "price": 250000,
+        "product": {
+          "id": "8",
+          "name": "Áo Thun Unisex Cotton Pima Thoáng Mát Lumi Basic",
+          "price": 250000,
+          "category": "clothing",
+          "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=80",
+          "stock": 50,
+          "description": "Sợi cotton Pima thượng hạng mềm mịn gấp đôi thông thường.",
+          "rating": 4.6
+        }
+      }
+    ],
+    "totalAmount": 500000,
+    "discountAmount": 50000,
+    "finalAmount": 450000,
+    "voucherCode": "GIAM10",
+    "status": "delivered",
+    "createdAt": "2026-03-20T14:15:00.000Z"
+  },
+  {
+    "id": "1003",
+    "userId": "3",
+    "customerName": "Trần Thị Bích",
+    "customerPhone": "0987654321",
+    "customerAddress": "Số 88 Đường Võ Văn Tần, Phường 6, Quận 3, TP. Hồ Chí Minh",
+    "shippingAddress": "Số 88 Đường Võ Văn Tần, Phường 6, Quận 3, TP. Hồ Chí Minh",
+    "items": [
+      {
+        "productId": "2",
+        "quantity": 1,
+        "price": 1950000,
+        "product": {
+          "id": "2",
+          "name": "Bàn Phím Cơ Không Dây Keychron K2 Nhôm RGB",
+          "price": 1950000,
+          "category": "electronics",
+          "image": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=80",
+          "stock": 22,
+          "description": "Bàn phím cơ layout 75% gọn gàng.",
+          "rating": 4.8
+        }
+      }
+    ],
+    "totalAmount": 1950000,
+    "discountAmount": 390000,
+    "finalAmount": 1560000,
+    "voucherCode": "GIAM20",
+    "status": "confirmed",
+    "createdAt": "2026-04-01T10:00:00.000Z"
+  },
+  {
+    "id": "1004",
+    "userId": "3",
+    "customerName": "Trần Thị Bích",
+    "customerPhone": "0987654321",
+    "customerAddress": "Số 88 Đường Võ Văn Tần, Phường 6, Quận 3, TP. Hồ Chí Minh",
+    "shippingAddress": "Số 88 Đường Võ Văn Tần, Phường 6, Quận 3, TP. Hồ Chí Minh",
+    "items": [
+      {
+        "productId": "14",
+        "quantity": 1,
+        "price": 380000,
+        "product": {
+          "id": "14",
+          "name": "Sổ Tay Bìa Da Thủ Công Moleskine Ruled Notebook",
+          "price": 380000,
+          "category": "documents",
+          "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=80",
+          "stock": 40,
+          "description": "Bìa da PU mềm mại dập chìm logo tinh xảo.",
+          "rating": 5
+        }
+      },
+      {
+        "productId": "15",
+        "quantity": 1,
+        "price": 320000,
+        "product": {
+          "id": "15",
+          "name": "Bút Ký Kim Loại Thân Nhôm Parker Jotter Original",
+          "price": 320000,
+          "category": "documents",
+          "image": "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=500&auto=format&fit=crop&q=80",
+          "stock": 35,
+          "description": "Biểu tượng bút ký kinh điển thế giới.",
+          "rating": 4.9
+        }
+      }
+    ],
+    "totalAmount": 700000,
+    "discountAmount": 30000,
+    "finalAmount": 670000,
+    "voucherCode": "FREESHIP",
+    "status": "pending",
+    "createdAt": "2026-04-10T16:20:00.000Z"
+  },
+  {
+    "id": "1005",
+    "userId": "2",
+    "customerName": "Nguyễn Văn An",
+    "customerPhone": "0912345678",
+    "customerAddress": "Số 45 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+    "shippingAddress": "Số 45 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+    "items": [
+      {
+        "productId": "18",
+        "quantity": 1,
+        "price": 680000,
+        "product": {
+          "id": "18",
+          "name": "Bình Giữ Nhiệt Thép Không Gỉ Stanley Classic 750ml",
+          "price": 680000,
+          "category": "other",
+          "image": "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=500&auto=format&fit=crop&q=80",
+          "stock": 25,
+          "description": "Công nghệ cách nhiệt chân không 2 lớp.",
+          "rating": 4.9
+        }
+      }
+    ],
+    "totalAmount": 680000,
+    "discountAmount": 0,
+    "finalAmount": 680000,
+    "status": "pending",
+    "createdAt": "2026-04-18T11:45:00.000Z"
+  }
+]

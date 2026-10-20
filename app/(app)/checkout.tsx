@@ -19,8 +19,8 @@ import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/useTheme';
 import { Header } from '../../components/Header';
-import { useCheckVoucher } from '../../hooks/useCheckVoucher';
-import { useCreateOrder } from '../../hooks/useCreateOrder';
+import { useCheckVoucher } from '../../hooks/useVouchersQuery';
+import { useCreateOrder } from '../../hooks/useOrdersQuery';
 import { calculateTotal, formatCurrency } from '../../utils/calculateTotal';
 import { Voucher, Order } from '../../types';
 
