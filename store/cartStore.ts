@@ -66,6 +66,10 @@ export const useCartStore = create<CartState>()(
 
       // Thêm sản phẩm vào giỏ hàng
       addItem: (product: Product, quantity: number = 1) => {
+        // Chặn thêm hàng hết kho
+        if ((product.stock ?? 1) <= 0) {
+          return;
+        }
         const currentItems = get().items;
         const existingIndex = currentItems.findIndex(
           (item) => item.product.id === product.id
@@ -78,6 +82,7 @@ export const useCartStore = create<CartState>()(
           const maxStock = product.stock ?? 999;
           updatedItems[existingIndex] = {
             ...updatedItems[existingIndex],
+            product, // Cập nhật thông tin product mới nhất (stock, price, ...)
             quantity: Math.min(newQuantity, maxStock),
           };
           set({ items: updatedItems });

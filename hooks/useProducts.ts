@@ -11,25 +11,22 @@ import { initialProducts } from '../data/products';
 // Khóa lưu trữ cache sản phẩm theo yêu cầu đề bài
 export const PRODUCTS_CACHE_KEY = 'lostfound-shopabc-products';
 
-// Helper an toàn đọc cache từ Storage
+// Helper an toàn đọc cache từ Storage (hỗ trợ cả Web & Mobile)
 async function getCachedProducts(): Promise<Product[] | null> {
   try {
-    let raw: string | null = null;
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
-      raw = window.localStorage.getItem(PRODUCTS_CACHE_KEY);
-    } else {
-      raw = await AsyncStorage.getItem(PRODUCTS_CACHE_KEY);
-    }
+    const raw =
+      Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage
+        ? window.localStorage.getItem(PRODUCTS_CACHE_KEY)
+        : await AsyncStorage.getItem(PRODUCTS_CACHE_KEY);
 
     if (raw) {
-      // Guard JSON.parse an toàn
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed as Product[];
       }
     }
-  } catch (error) {
-    console.warn('Lỗi khi đọc cache sản phẩm từ storage:', error);
+  } catch (e) {
+    console.warn('Lỗi đọc cache sản phẩm từ storage:', e);
   }
   return null;
 }
@@ -48,24 +45,21 @@ async function setCachedProducts(products: Product[]): Promise<void> {
   }
 }
 
-// Hàm fetch danh sách sản phẩm từ API
+// Hàm fetch danh sách sản phẩm: đọc từ API, nếu offline tự khôi phục từ AsyncStorage hoặc initialProducts
 async function fetchProducts(): Promise<Product[]> {
   try {
     const response = await axiosClient.get<Product[]>('/products');
     if (response.data && Array.isArray(response.data)) {
-      // Lưu lại cache khi fetch thành công
       await setCachedProducts(response.data);
       return response.data;
     }
     return initialProducts;
   } catch (error) {
-    console.warn('Không thể kết nối đến JSON Server, thử khôi phục từ cache/seed:', error);
-    // Thử lấy từ cache AsyncStorage nếu API lỗi
+    console.warn('JSON Server offline, đọc từ AsyncStorage cache hoặc seed ban đầu:', error);
     const cached = await getCachedProducts();
     if (cached && cached.length > 0) {
       return cached;
     }
-    // Fallback dữ liệu mẫu ban đầu để app luôn có data trải nghiệm
     return initialProducts;
   }
 }
@@ -78,7 +72,7 @@ export function useProducts() {
   });
 
   return {
-    data: query.data ?? [],
+    data: query.data ?? initialProducts,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,

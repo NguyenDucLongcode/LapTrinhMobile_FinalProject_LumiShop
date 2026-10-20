@@ -1,7 +1,7 @@
 // app/(app)/admin/index.tsx
-// Dashboard Quản trị viên LumiShop: Thống kê 25+ sản phẩm, 5 voucher, và các menu chức năng tối giản
+// Dashboard Quản trị viên LumiShop: Thống kê sản phẩm, voucher động, và các menu chức năng tối giản
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,17 +10,43 @@ import {
   ScrollView,
   SafeAreaView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { useProducts } from '../../../hooks/useProducts';
 import { useTheme } from '../../../theme/useTheme';
 import { Header } from '../../../components/Header';
 import { useAuthStore } from '../../../store/authStore';
+import axiosClient from '../../../api/axiosClient';
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
   const { colors, borderRadius, shadowSm } = useTheme();
   const { data: products } = useProducts();
   const { user } = useAuthStore();
+
+  // Đếm voucher động từ API
+  const [voucherCount, setVoucherCount] = useState<number | null>(null);
+  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
+  useEffect(() => {
+    const checkServer = async () => {
+      try {
+        const res = await axiosClient.get('/vouchers');
+        setServerStatus('online');
+        if (Array.isArray(res.data)) {
+          setVoucherCount(res.data.length);
+        }
+      } catch {
+        setServerStatus('offline');
+        setVoucherCount(5); // Fallback số lượng voucher mặc định (initialVouchers) khi offline
+      }
+    };
+    checkServer();
+  }, []);
+
+  // Bảo vệ phân quyền: chỉ admin mới được vào
+  if (!user || user.role !== 'admin') {
+    return <Redirect href="/(app)" />;
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -89,7 +115,9 @@ export default function AdminDashboardScreen() {
             ]}
           >
             <Text style={styles.statIcon}>🎟️</Text>
-            <Text style={[styles.statNum, { color: '#3B82F6' }]}>5</Text>
+            <Text style={[styles.statNum, { color: '#3B82F6' }]}>
+              {voucherCount !== null ? voucherCount : '...'}
+            </Text>
             <Text style={[styles.statLabel, { color: colors.muted }]}>
               Mã voucher ưu đãi
             </Text>
@@ -107,7 +135,12 @@ export default function AdminDashboardScreen() {
             ]}
           >
             <Text style={styles.statIcon}>⚡</Text>
-            <Text style={[styles.statNum, { color: colors.success }]}>200 OK</Text>
+            <Text style={[styles.statNum, {
+              color: serverStatus === 'online' ? colors.success : serverStatus === 'offline' ? colors.danger : colors.muted,
+              fontSize: 16,
+            }]}>
+              {serverStatus === 'online' ? '200 OK' : serverStatus === 'offline' ? 'Offline' : '...'}
+            </Text>
             <Text style={[styles.statLabel, { color: colors.muted }]}>
               JSON Server port 3000
             </Text>
@@ -125,7 +158,7 @@ export default function AdminDashboardScreen() {
             ]}
           >
             <Text style={styles.statIcon}>👥</Text>
-            <Text style={[styles.statNum, { color: colors.text }]}>2</Text>
+            <Text style={[styles.statNum, { color: colors.text }]}>3</Text>
             <Text style={[styles.statLabel, { color: colors.muted }]}>
               Tài khoản mẫu
             </Text>

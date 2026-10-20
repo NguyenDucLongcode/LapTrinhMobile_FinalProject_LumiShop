@@ -290,7 +290,26 @@
   ],
   "orders": [],
   "users": [
-    { "id": "1", "username": "admin", "password": "123", "name": "Quản Trị Viên", "role": "admin" },
-    { "id": "2", "username": "user", "password": "123", "name": "Khách Hàng Mẫu", "role": "customer" }
+    {
+      "id": "1",
+      "username": "admin",
+      "password": "123",
+      "name": "Quản Trị Viên",
+      "role": "admin"
+    },
+    {
+      "id": "2",
+      "username": "user",
+      "password": "123",
+      "name": "Khách Hàng Mẫu",
+      "role": "customer"
+    },
+    {
+      "id": "3",
+      "username": "khachhang",
+      "password": "123",
+      "name": "Khách Hàng Mới",
+      "role": "customer"
+    }
   ]
 }

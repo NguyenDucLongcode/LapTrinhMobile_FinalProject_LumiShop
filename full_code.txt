@@ -1,0 +1,6258 @@
+==> api\axiosClient.ts <==
+// api/axiosClient.ts
+// Cấu hình Axios client để gọi Mock API (JSON Server)
+import axios from 'axios';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
+// Lấy IP động từ Expo hostUri để hỗ trợ Android Emulator và điện thoại thật qua Expo Go
+// - Web / iOS Simulator: dùng localhost
+// - Android Emulator: Expo hostUri thường là 10.0.2.2 hoặc IP LAN
+// - Điện thoại thật qua Expo Go: IP LAN của máy tính host
+function getBaseUrl(): string {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:3000';
+  }
+  // Lấy hostUri từ Expo (ví dụ: "192.168.1.5:8081")
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const host = hostUri.split(':')[0]; // Chỉ lấy phần IP, bỏ port 8081
+    return `http://${host}:3000`;
+  }
+  // Fallback cho Android Emulator nếu không lấy được hostUri
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000';
+  }
+  return 'http://localhost:3000';
+}
+
+export const BASE_URL = getBaseUrl();
+
+export const axiosClient = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+  timeout: 10000, // 10 giây timeout
+});
+
+// Request interceptor: có thể bổ sung token xác thực vào header nếu có
+axiosClient.interceptors.request.use(
+  (config) => {
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor: chuẩn hóa xử lý phản hồi hoặc lỗi
+axiosClient.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      'Đã xảy ra lỗi khi kết nối tới máy chủ!';
+    return Promise.reject(new Error(message));
+  }
+);
+
+export default axiosClient;
+
+
+==> app\(app)\+not-found.tsx <==
+// app/(app)/+not-found.tsx
+// Màn hình 404 Not Found LumiShop phong cách Minimalist
+
+import React from 'react';
+import { View, Text, StyleSheet, Pressable, SafeAreaView } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useTheme } from '../../theme/useTheme';
+
+export default function NotFoundScreen() {
+  const router = useRouter();
+  const { colors, borderRadius, shadow } = useTheme();
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <View style={styles.content}>
+        <View style={[styles.emojiCircle, { backgroundColor: colors.accentLight }]}>
+          <Text style={{ fontSize: 44 }}>🧭</Text>
+        </View>
+        <Text style={[styles.title, { color: colors.text }]}>
+          404 - Không tìm thấy trang
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.muted }]}>
+          Đường dẫn bạn vừa truy cập không tồn tại hoặc đã được di chuyển trên LumiShop.
+        </Text>
+        <Pressable
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Trở về trang chủ"
+          onPress={() => router.replace('/(app)')}
+          style={({ pressed }) => [
+            styles.homeBtn,
+            {
+              backgroundColor: colors.accent,
+              borderRadius: borderRadius.button,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            },
+            shadow,
+          ]}
+        >
+          <Text style={styles.homeBtnText}>🏠 Quay về Trang Chủ LumiShop</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emojiCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 28,
+  },
+  homeBtn: {
+    height: 50,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+});
+
+
+==> app\(app)\_layout.tsx <==
+// app/(app)/_layout.tsx
+// Layout cho nhóm route được bảo vệ, tích hợp ProtectedRoute kiểm tra token trước khi truy cập
+
+import React from 'react';
+import { Stack } from 'expo-router';
+import { ProtectedRoute } from '../../components/ProtectedRoute';
+
+export default function AppProtectedLayout() {
+  return (
+    <ProtectedRoute>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="product/[id]" />
+        <Stack.Screen name="cart" />
+        <Stack.Screen name="checkout" />
+        <Stack.Screen name="admin/index" />
+        <Stack.Screen name="admin/products" />
+        <Stack.Screen name="admin/vouchers" />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+    </ProtectedRoute>
+  );
+}
+
+
+==> app\(app)\admin\index.tsx <==
+// app/(app)/admin/index.tsx
+// Dashboard Quản trị viên LumiShop: Thống kê sản phẩm, voucher động, và các menu chức năng tối giản
+
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  SafeAreaView,
+} from 'react-native';
+import { useRouter, Redirect } from 'expo-router';
+import { useProducts } from '../../../hooks/useProducts';
+import { useTheme } from '../../../theme/useTheme';
+import { Header } from '../../../components/Header';
+import { useAuthStore } from '../../../store/authStore';
+import axiosClient from '../../../api/axiosClient';
+
+export default function AdminDashboardScreen() {
+  const router = useRouter();
+  const { colors, borderRadius, shadowSm } = useTheme();
+  const { data: products } = useProducts();
+  const { user } = useAuthStore();
+
+  // Đếm voucher động từ API
+  const [voucherCount, setVoucherCount] = useState<number | null>(null);
+  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
+  useEffect(() => {
+    const checkServer = async () => {
+      try {
+        const res = await axiosClient.get('/vouchers');
+        setServerStatus('online');
+        if (Array.isArray(res.data)) {
+          setVoucherCount(res.data.length);
+        }
+      } catch {
+        setServerStatus('offline');
+        setVoucherCount(5); // Fallback số lượng voucher mặc định (initialVouchers) khi offline
+      }
+    };
+    checkServer();
+  }, []);
+
+  // Bảo vệ phân quyền: chỉ admin mới được vào
+  if (!user || user.role !== 'admin') {
+    return <Redirect href="/(app)" />;
+  }
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <Header title="LumiShop Admin" showBack={true} showCart={false} />
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Banner chào Admin */}
+        <View
+          style={[
+            styles.welcomeBanner,
+            {
+              backgroundColor: colors.card,
+              borderRadius: borderRadius.card,
+              borderColor: colors.border,
+            },
+            shadowSm,
+          ]}
+        >
+          <View style={[styles.welcomeIconBox, { backgroundColor: colors.accentLight }]}>
+            <Text style={{ fontSize: 28 }}>🛡️</Text>
+          </View>
+          <View style={styles.welcomeTexts}>
+            <Text style={[styles.welcomeTitle, { color: colors.text }]}>
+              Xin chào, {user?.name || 'Quản trị viên'} 👋
+            </Text>
+            <Text style={[styles.welcomeDesc, { color: colors.muted }]}>
+              Trung tâm kiểm soát hệ thống bán hàng trực tuyến LumiShop
+            </Text>
+          </View>
+        </View>
+
+        {/* Khối Thống kê số liệu */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          📊 Tổng quan số liệu LumiShop
+        </Text>
+        <View style={styles.statsGrid}>
+          <View
+            style={[
+              styles.statBox,
+              {
+                backgroundColor: colors.card,
+                borderRadius: borderRadius.card,
+                borderColor: colors.border,
+              },
+              shadowSm,
+            ]}
+          >
+            <Text style={styles.statIcon}>📦</Text>
+            <Text style={[styles.statNum, { color: colors.accent }]}>
+              {products.length}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>
+              Sản phẩm có sẵn
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.statBox,
+              {
+                backgroundColor: colors.card,
+                borderRadius: borderRadius.card,
+                borderColor: colors.border,
+              },
+              shadowSm,
+            ]}
+          >
+            <Text style={styles.statIcon}>🎟️</Text>
+            <Text style={[styles.statNum, { color: '#3B82F6' }]}>
+              {voucherCount !== null ? voucherCount : '...'}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>
+              Mã voucher ưu đãi
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.statBox,
+              {
+                backgroundColor: colors.card,
+                borderRadius: borderRadius.card,
+                borderColor: colors.border,
+              },
+              shadowSm,
+            ]}
+          >
+            <Text style={styles.statIcon}>⚡</Text>
+            <Text style={[styles.statNum, {
+              color: serverStatus === 'online' ? colors.success : serverStatus === 'offline' ? colors.danger : colors.muted,
+              fontSize: 16,
+            }]}>
+              {serverStatus === 'online' ? '200 OK' : serverStatus === 'offline' ? 'Offline' : '...'}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>
+              JSON Server port 3000
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.statBox,
+              {
+                backgroundColor: colors.card,
+                borderRadius: borderRadius.card,
+                borderColor: colors.border,
+              },
+              shadowSm,
+            ]}
+          >
+            <Text style={styles.statIcon}>👥</Text>
+            <Text style={[styles.statNum, { color: colors.text }]}>3</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>
+              Tài khoản mẫu
+            </Text>
+          </View>
+        </View>
+
+        {/* Khối Danh mục chức năng */}
+        <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>
+          ⚙️ Chức năng quản trị
+        </Text>
+
+        <Pressable
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Quản lý Sản phẩm"
+          onPress={() => router.push('/(app)/admin/products')}
+          style={({ pressed }) => [
+            styles.menuCard,
+            {
+              backgroundColor: colors.card,
+              borderRadius: borderRadius.card,
+              borderColor: colors.border,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            },
+            shadowSm,
+          ]}
+        >
+          <View style={styles.menuLeft}>
+            <View style={[styles.menuIconBg, { backgroundColor: colors.accentLight }]}>
+              <Text style={{ fontSize: 22 }}>📦</Text>
+            </View>
+            <View style={styles.menuTexts}>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Quản lý Sản phẩm</Text>
+              <Text style={[styles.menuDesc, { color: colors.muted }]}>
+                Xem danh sách 25+ sản phẩm, thêm mới và xóa sản phẩm
+              </Text>
+            </View>
+          </View>
+          <Text style={[styles.menuArrow, { color: colors.accent }]}>→</Text>
+        </Pressable>
+
+        <Pressable
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Quản lý Voucher"
+          onPress={() => router.push('/(app)/admin/vouchers')}
+          style={({ pressed }) => [
+            styles.menuCard,
+            {
+              backgroundColor: colors.card,
+              borderRadius: borderRadius.card,
+              borderColor: colors.border,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            },
+            shadowSm,
+          ]}
+        >
+          <View style={styles.menuLeft}>
+            <View style={[styles.menuIconBg, { backgroundColor: '#DBEAFE' }]}>
+              <Text style={{ fontSize: 22 }}>🎟️</Text>
+            </View>
+            <View style={styles.menuTexts}>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Quản lý Voucher</Text>
+              <Text style={[styles.menuDesc, { color: colors.muted }]}>
+                Xem 5 voucher mẫu, tạo mã khuyến mãi mới
+              </Text>
+            </View>
+          </View>
+          <Text style={[styles.menuArrow, { color: colors.accent }]}>→</Text>
+        </Pressable>
+
+        <Pressable
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại giao diện mua sắm"
+          onPress={() => router.replace('/(app)')}
+          style={({ pressed }) => [
+            styles.backShoppingBtn,
+            {
+              borderColor: colors.accent,
+              borderRadius: borderRadius.button,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            },
+          ]}
+        >
+          <Text style={[styles.backShoppingText, { color: colors.accent }]}>
+            🛍️ Chuyển sang Giao diện Mua sắm LumiShop
+          </Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  welcomeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 18,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  welcomeIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  welcomeTexts: {
+    flex: 1,
+  },
+  welcomeTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  welcomeDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
+  statBox: {
+    flex: 1,
+    minWidth: '45%',
+    padding: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  statIcon: {
+    fontSize: 22,
+    marginBottom: 6,
+  },
+  statNum: {
+    fontSize: 22,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  menuCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  menuLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  menuIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  menuTexts: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  menuDesc: {
+    fontSize: 12,
+  },
+  menuArrow: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginLeft: 10,
+  },
+  backShoppingBtn: {
+    height: 50,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  backShoppingText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+});
+
+
+==> app\(app)\admin\products.tsx <==
+// app/(app)/admin/products.tsx
+// Quản lý Sản phẩm LumiShop: Danh sách sản phẩm bo góc 14, Nút Thêm mới bo tròn 24 và Modal nhập liệu hiện đại
+
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  Modal,
+  ScrollView,
+  SafeAreaView,
+  Alert,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { Redirect } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { useProducts } from '../../../hooks/useProducts';
+import { useTheme } from '../../../theme/useTheme';
+import { Header } from '../../../components/Header';
+import { formatCurrency } from '../../../utils/calculateTotal';
+import axiosClient from '../../../api/axiosClient';
+import { Product } from '../../../types';
+import { useAuthStore } from '../../../store/authStore';
+
+export default function AdminProductsScreen() {
+  const { colors, borderRadius, shadow, shadowSm } = useTheme();
+  const queryClient = useQueryClient();
+  const { data: products, isLoading } = useProducts();
+  const { user } = useAuthStore();
+
+  // Tất cả useState phải khai báo trước mọi early return (Rules of Hooks)
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form input
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [category, setCategory] = useState('clothing');
+  const [stock, setStock] = useState('20');
+  const [image, setImage] = useState(
+    'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=80'
+  );
+  const [description, setDescription] = useState('');
+
+  // Bảo vệ phân quyền: chỉ admin mới được vào (sau tất cả hooks)
+  if (!user || user.role !== 'admin') {
+    return <Redirect href="/(app)" />;
+  }
+
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  const resetForm = () => {
+    setName('');
+    setPrice('');
+    setCategory('clothing');
+    setStock('20');
+    setDescription('');
+    setModalVisible(false);
+  };
+
+  const handleCreateProduct = async () => {
+    if (!name.trim()) {
+      showAlert('Lỗi', 'Vui lòng nhập tên sản phẩm!');
+      return;
+    }
+    const numPrice = Number(price);
+    if (!numPrice || numPrice <= 0) {
+      showAlert('Lỗi', 'Vui lòng nhập giá hợp lệ (> 0)!');
+      return;
+    }
+    // Validate stock: chấp nhận 0 (hết hàng), không cho số âm
+    const numStock = parseInt(stock, 10);
+    if (isNaN(numStock) || numStock < 0) {
+      showAlert('Lỗi', 'Tồn kho phải là số nguyên không âm (0 hoặc lớn hơn)!');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const newProduct: Product = {
+      id: String(Date.now()),
+      name: name.trim(),
+      price: numPrice,
+      category,
+      stock: numStock,
+      image: image.trim(),
+      description: description.trim() || 'Sản phẩm mới thêm tại LumiShop',
+      rating: 5,
+    };
+
+    try {
+      await axiosClient.post('/products', newProduct);
+      setIsSubmitting(false);
+      resetForm();
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      showAlert('Thành công', 'Đã thêm sản phẩm mới vào LumiShop!');
+    } catch (e: any) {
+      setIsSubmitting(false);
+      console.warn('Lỗi gọi API thêm sản phẩm:', e);
+      const errMsg = e?.message || 'Không thể thêm sản phẩm. Kiểm tra JSON Server!';
+      showAlert('Lỗi', `Không thể thêm sản phẩm!\n${errMsg}`);
+    }
+  };
+
+  const handleDeleteProduct = (productId: string, productName: string) => {
+    const doDelete = async () => {
+      try {
+        await axiosClient.delete(`/products/${productId}`);
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+      } catch (e: any) {
+        console.warn('Lỗi gọi API xóa sản phẩm:', e);
+        showAlert('Lỗi xóa sản phẩm', e?.message || 'Không thể xóa sản phẩm do JSON Server offline!');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Bạn có chắc muốn xóa "${productName}"?`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert('Xác nhận xóa', `Bạn có chắc muốn xóa "${productName}"?`, [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Xóa', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  };
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <Header
+        title="Sản phẩm LumiShop"
+        showBack={true}
+        showCart={false}
+        rightAction={
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Thêm sản phẩm"
+            onPress={() => setModalVisible(true)}
+            style={[
+              styles.topAddBtn,
+              {
+                backgroundColor: colors.accent,
+                borderRadius: borderRadius.pill,
+              },
+            ]}
+          >
+            <Text style={styles.topAddText}>+ Thêm mới</Text>
+          </Pressable>
+        }
+      />
+
+      {isLoading ? (
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.muted }]}>
+            Đang tải danh sách sản phẩm...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={products}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <View
+              style={[
+                styles.itemRow,
+                {
+                  backgroundColor: colors.card,
+                  borderRadius: borderRadius.card,
+                  borderColor: colors.border,
+                },
+                shadowSm,
+              ]}
+            >
+              <Image
+                source={{ uri: item.image }}
+                style={[styles.thumbImage, { borderRadius: borderRadius.input }]}
+                contentFit="cover"
+                transition={200}
+              />
+
+              <View style={styles.itemDetails}>
+                <Text numberOfLines={1} style={[styles.prodName, { color: colors.text }]}>
+                  {item.name}
+                </Text>
+                <Text style={[styles.prodPrice, { color: colors.accent }]}>
+                  {formatCurrency(item.price)}
+                </Text>
+                <Text style={[styles.prodMeta, { color: colors.muted }]}>
+                  Kho: {item.stock} • Loại: {item.category} • ⭐ {item.rating ?? 5.0}
+                </Text>
+              </View>
+
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`Xóa ${item.name}`}
+                onPress={() => handleDeleteProduct(item.id, item.name)}
+                style={({ pressed }) => [
+                  styles.deleteCircleBtn,
+                  {
+                    backgroundColor: '#FEE2E2',
+                    transform: [{ scale: pressed ? 0.9 : 1 }],
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 16 }}>🗑️</Text>
+              </Pressable>
+            </View>
+          )}
+        />
+      )}
+
+      {/* Modal Thêm sản phẩm mới */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.card,
+                borderRadius: borderRadius.card,
+                borderColor: colors.border,
+              },
+              shadow,
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Thêm Sản Phẩm Mới</Text>
+              <Pressable onPress={resetForm} style={styles.closeBtn}>
+                <Text style={{ fontSize: 18, color: colors.muted }}>✕</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.formScroll}>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Tên sản phẩm *</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="Ví dụ: Tai nghe Sony..."
+                  placeholderTextColor={colors.muted}
+                  value={name}
+                  onChangeText={setName}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Giá bán (VNĐ) *</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="Ví dụ: 1500000"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="numeric"
+                  value={price}
+                  onChangeText={setPrice}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Số lượng tồn kho</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="20"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="numeric"
+                  value={stock}
+                  onChangeText={setStock}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Danh mục</Text>
+                <View style={styles.categoryPicksRow}>
+                  {['electronics', 'clothing', 'documents', 'other'].map((cat) => (
+                    <Pressable
+                      key={cat}
+                      onPress={() => setCategory(cat)}
+                      style={[
+                        styles.catChoiceBtn,
+                        {
+                          backgroundColor: category === cat ? colors.accent : colors.bg,
+                          borderColor: colors.border,
+                          borderRadius: borderRadius.pill,
+                        },
+                      ]}
+                    >
+                      <Text style={{ color: category === cat ? '#FFFFFF' : colors.text, fontSize: 12, fontWeight: '700' }}>
+                        {cat}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Link ảnh sản phẩm (URL)</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="https://images.unsplash.com/..."
+                  placeholderTextColor={colors.muted}
+                  value={image}
+                  onChangeText={setImage}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Mô tả chi tiết</Text>
+                <TextInput
+                  style={[styles.modalInput, styles.textArea, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="Nhập mô tả sản phẩm..."
+                  placeholderTextColor={colors.muted}
+                  multiline
+                  numberOfLines={3}
+                  value={description}
+                  onChangeText={setDescription}
+                />
+              </View>
+
+              <Pressable
+                onPress={handleCreateProduct}
+                disabled={isSubmitting}
+                style={[
+                  styles.saveBtn,
+                  {
+                    backgroundColor: colors.accent,
+                    borderRadius: borderRadius.button,
+                    opacity: isSubmitting ? 0.7 : 1,
+                  },
+                ]}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Lưu Sản Phẩm</Text>
+                )}
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  topAddBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  topAddText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  thumbImage: {
+    width: 60,
+    height: 60,
+    backgroundColor: '#F1F5F9',
+  },
+  itemDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  prodName: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  prodPrice: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  prodMeta: {
+    fontSize: 11,
+  },
+  deleteCircleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerBox: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 480,
+    borderWidth: 1,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  closeBtn: {
+    padding: 6,
+  },
+  formScroll: {
+    paddingBottom: 10,
+  },
+  inputGroup: {
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  modalInput: {
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 46,
+    fontSize: 14,
+  },
+  textArea: {
+    height: 70,
+    paddingTop: 8,
+    textAlignVertical: 'top',
+  },
+  categoryPicksRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  catChoiceBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+  },
+  saveBtn: {
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+});
+
+
+==> app\(app)\admin\vouchers.tsx <==
+// app/(app)/admin/vouchers.tsx
+// Quản lý Voucher LumiShop: Xem voucher có sẵn, Thêm mã mới và Xóa voucher với giao diện bo tròn mềm mại
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  Modal,
+  ScrollView,
+  SafeAreaView,
+  Alert,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
+import { Redirect } from 'expo-router';
+import { useTheme } from '../../../theme/useTheme';
+import { Header } from '../../../components/Header';
+import { formatCurrency } from '../../../utils/calculateTotal';
+import axiosClient from '../../../api/axiosClient';
+import { initialVouchers } from '../../../data/products';
+import { Voucher } from '../../../types';
+import { useAuthStore } from '../../../store/authStore';
+
+export default function AdminVouchersScreen() {
+  const { colors, borderRadius, shadow, shadowSm } = useTheme();
+  const { user } = useAuthStore();
+
+  const [vouchers, setVouchers] = useState<Voucher[]>(initialVouchers);
+  const [isLoading, setIsLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form input
+  const [code, setCode] = useState('');
+  const [discount, setDiscount] = useState('');
+  const [minOrder, setMinOrder] = useState('200000');
+
+  const fetchVouchers = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axiosClient.get<Voucher[]>('/vouchers');
+      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+        setVouchers(res.data);
+      } else {
+        setVouchers(initialVouchers);
+      }
+    } catch (e) {
+      console.warn('Lỗi fetch vouchers từ server, dùng initialVouchers:', e);
+      setVouchers(initialVouchers);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVouchers();
+  }, []);
+
+  // Bảo vệ phân quyền: chỉ admin mới được vào
+  if (!user || user.role !== 'admin') {
+    return <Redirect href="/(app)" />;
+  }
+
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  const resetForm = () => {
+    setCode('');
+    setDiscount('');
+    setMinOrder('200000');
+    setModalVisible(false);
+  };
+
+  const handleCreateVoucher = async () => {
+    const cleanCode = code.trim().toUpperCase();
+    if (!cleanCode) {
+      showAlert('Lỗi', 'Vui lòng nhập mã voucher!');
+      return;
+    }
+    const numDiscount = Number(discount);
+    if (!numDiscount || numDiscount <= 0) {
+      showAlert('Lỗi', 'Vui lòng nhập mức giảm giá hợp lệ!');
+      return;
+    }
+    // Validate minOrder: không âm
+    const numMinOrder = parseInt(minOrder, 10);
+    if (isNaN(numMinOrder) || numMinOrder < 0) {
+      showAlert('Lỗi', 'Đơn tối thiểu phải là số không âm!');
+      return;
+    }
+    // Kiểm tra trùng mã voucher
+    const isDuplicate = vouchers.some((v) => v.code.toUpperCase() === cleanCode);
+    if (isDuplicate) {
+      showAlert('Lỗi', `Mã voucher "${cleanCode}" đã tồn tại! Vui lòng dùng mã khác.`);
+      return;
+    }
+
+    setIsSubmitting(true);
+    const newVoucher: Voucher = {
+      id: String(Date.now()),
+      code: cleanCode,
+      discount: numDiscount,
+      status: 'active',
+      minOrderAmount: numMinOrder,
+    };
+
+    try {
+      await axiosClient.post('/vouchers', newVoucher);
+      setVouchers((prev) => [...prev, newVoucher]);
+      showAlert('Thành công', `Đã thêm voucher "${cleanCode}"!`);
+    } catch (e: any) {
+      console.warn('Lỗi gọi API thêm voucher, thêm vào state local:', e);
+      setVouchers((prev) => [...prev, newVoucher]);
+      showAlert('Thông báo', `Đã lưu voucher "${cleanCode}" vào bộ nhớ tạm (JSON Server offline)!`);
+    } finally {
+      setIsSubmitting(false);
+      resetForm();
+    }
+  };
+
+  const handleDeleteVoucher = (voucherId: string, voucherCode: string) => {
+    const doDelete = async () => {
+      try {
+        await axiosClient.delete(`/vouchers/${voucherId}`);
+        setVouchers((prev) => prev.filter((v) => v.id !== voucherId));
+      } catch (e: any) {
+        console.warn('Lỗi gọi API xóa voucher:', e);
+        // Xóa khỏi local state để UI phản hồi mượt mà
+        setVouchers((prev) => prev.filter((v) => v.id !== voucherId));
+        showAlert('Thông báo', 'Đã xóa voucher khỏi bộ nhớ tạm (JSON Server offline)!');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Bạn có chắc muốn xóa mã giảm giá "${voucherCode}"?`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert('Xác nhận xóa', `Bạn có chắc muốn xóa voucher "${voucherCode}"?`, [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Xóa', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  };
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <Header
+        title="Voucher LumiShop"
+        showBack={true}
+        showCart={false}
+        rightAction={
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Thêm voucher mới"
+            onPress={() => setModalVisible(true)}
+            style={[
+              styles.topAddBtn,
+              {
+                backgroundColor: colors.accent,
+                borderRadius: borderRadius.pill,
+              },
+            ]}
+          >
+            <Text style={styles.topAddText}>+ Tạo mã</Text>
+          </Pressable>
+        }
+      />
+
+      {isLoading ? (
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.muted }]}>
+            Đang tải danh sách voucher...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={vouchers}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <View
+              style={[
+                styles.voucherCard,
+                {
+                  backgroundColor: colors.card,
+                  borderRadius: borderRadius.card,
+                  borderColor: colors.border,
+                },
+                shadowSm,
+              ]}
+            >
+              <View style={styles.voucherLeft}>
+                <View
+                  style={[
+                    styles.codeBadge,
+                    {
+                      backgroundColor: colors.accentLight,
+                      borderColor: colors.accent,
+                      borderRadius: borderRadius.pill,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.codeText, { color: colors.accent }]}>
+                    {item.code}
+                  </Text>
+                </View>
+
+                <View style={styles.voucherInfo}>
+                  <Text style={[styles.discountText, { color: colors.text }]}>
+                    Giảm {item.discount <= 100 ? `${item.discount}%` : formatCurrency(item.discount)}
+                  </Text>
+                  <Text style={[styles.conditionText, { color: colors.muted }]}>
+                    Đơn tối thiểu: {item.minOrderAmount ? formatCurrency(item.minOrderAmount) : '0đ'}
+                  </Text>
+                  <Text style={[styles.statusTag, { color: item.status === 'active' ? colors.success : colors.danger }]}>
+                    ● {item.status === 'active' ? 'Đang hoạt động' : 'Hết hạn'}
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`Xóa mã ${item.code}`}
+                onPress={() => handleDeleteVoucher(item.id, item.code)}
+                style={({ pressed }) => [
+                  styles.deleteCircleBtn,
+                  {
+                    backgroundColor: '#FEE2E2',
+                    transform: [{ scale: pressed ? 0.9 : 1 }],
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 16 }}>🗑️</Text>
+              </Pressable>
+            </View>
+          )}
+        />
+      )}
+
+      {/* Modal Tạo Voucher Mới */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.card,
+                borderRadius: borderRadius.card,
+                borderColor: colors.border,
+              },
+              shadow,
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Tạo Voucher Mới</Text>
+              <Pressable onPress={resetForm} style={styles.closeBtn}>
+                <Text style={{ fontSize: 18, color: colors.muted }}>✕</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.formScroll}>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Mã Voucher (In hoa) *</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="Ví dụ: SALE50, LUMI2026..."
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="characters"
+                  value={code}
+                  onChangeText={setCode}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Mức giảm giá *</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="20 (nếu giảm 20%) hoặc 50000 (nếu giảm 50k)..."
+                  placeholderTextColor={colors.muted}
+                  keyboardType="numeric"
+                  value={discount}
+                  onChangeText={setDiscount}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Đơn hàng tối thiểu (VNĐ)</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="Ví dụ: 150000"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="numeric"
+                  value={minOrder}
+                  onChangeText={setMinOrder}
+                />
+              </View>
+
+              <Pressable
+                onPress={handleCreateVoucher}
+                disabled={isSubmitting}
+                style={[
+                  styles.saveBtn,
+                  {
+                    backgroundColor: colors.accent,
+                    borderRadius: borderRadius.button,
+                    opacity: isSubmitting ? 0.7 : 1,
+                  },
+                ]}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Tạo Voucher Ngay</Text>
+                )}
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  topAddBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  topAddText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  voucherCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  voucherLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  codeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  codeText: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  voucherInfo: {
+    flex: 1,
+  },
+  discountText: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  conditionText: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  statusTag: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  deleteCircleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerBox: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 460,
+    borderWidth: 1,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  closeBtn: {
+    padding: 6,
+  },
+  formScroll: {
+    paddingBottom: 10,
+  },
+  inputGroup: {
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  modalInput: {
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 46,
+    fontSize: 14,
+  },
+  saveBtn: {
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+});
+
+
+==> app\(app)\cart.tsx <==
+// app/(app)/cart.tsx
+// Giỏ hàng LumiShop: Card item ảnh 65x65 bo góc, bộ chọn số lượng, Card tổng tiền lớn và Nút thanh toán bo tròn 24
+
+import React from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  SafeAreaView,
+  Alert,
+  Platform,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { useCartStore } from '../../store/cartStore';
+import { useTheme } from '../../theme/useTheme';
+import { Header } from '../../components/Header';
+import { calculateTotal, formatCurrency } from '../../utils/calculateTotal';
+import { CartItem } from '../../types';
+
+export default function CartScreen() {
+  const router = useRouter();
+  const { colors, borderRadius, shadow, shadowSm } = useTheme();
+  const { items, removeItem, updateQuantity, clearCart } = useCartStore();
+
+  const { total } = calculateTotal(items);
+
+  const handleClearCart = () => {
+    if (items.length === 0) return;
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Bạn có chắc muốn xóa tất cả sản phẩm trong giỏ?')) {
+        clearCart();
+      }
+    } else {
+      Alert.alert('Xóa giỏ hàng', 'Bạn có chắc muốn xóa toàn bộ sản phẩm?', [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa hết',
+          style: 'destructive',
+          onPress: clearCart,
+        },
+      ]);
+    }
+  };
+
+  const renderCartItem = ({ item }: { item: CartItem }) => {
+    return (
+      <View
+        style={[
+          styles.itemCard,
+          {
+            backgroundColor: colors.card,
+            borderRadius: borderRadius.card,
+            borderColor: colors.border,
+          },
+          shadowSm,
+        ]}
+      >
+        {/* Ảnh nhỏ 65x65 bo góc */}
+        <Image
+          source={{ uri: item.product.image }}
+          style={[styles.itemImage, { borderRadius: borderRadius.input }]}
+          contentFit="cover"
+          transition={200}
+        />
+
+        {/* Thông tin sản phẩm */}
+        <View style={styles.itemInfo}>
+          <Text
+            numberOfLines={2}
+            style={[styles.itemName, { color: colors.text }]}
+          >
+            {item.product.name}
+          </Text>
+
+          <Text style={[styles.itemPrice, { color: colors.accent }]}>
+            {formatCurrency(item.product.price)}
+          </Text>
+
+          {/* Hàng bộ chọn số lượng & Nút xóa thùng rác đỏ */}
+          <View style={styles.actionsRow}>
+            <View style={[styles.quantityPicker, { backgroundColor: colors.bg, borderRadius: borderRadius.input }]}>
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Giảm số lượng"
+                onPress={() => updateQuantity(item.product.id, item.quantity - 1)}
+                style={styles.qtyBtn}
+              >
+                <Text style={[styles.qtyBtnText, { color: colors.text }]}>-</Text>
+              </Pressable>
+
+              <Text style={[styles.qtyText, { color: colors.text }]}>
+                {item.quantity}
+              </Text>
+
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Tăng số lượng"
+                onPress={() => updateQuantity(item.product.id, item.quantity + 1)}
+                style={styles.qtyBtn}
+              >
+                <Text style={[styles.qtyBtnText, { color: colors.text }]}>+</Text>
+              </Pressable>
+            </View>
+
+            <Pressable
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`Xóa ${item.product.name}`}
+              hitSlop={8}
+              onPress={() => removeItem(item.product.id)}
+              style={({ pressed }) => [
+                styles.deleteBtn,
+                {
+                  backgroundColor: '#FEE2E2',
+                  transform: [{ scale: pressed ? 0.9 : 1 }],
+                },
+              ]}
+            >
+              <Text style={{ fontSize: 16 }}>🗑️</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <Header
+        title="Giỏ hàng LumiShop"
+        showBack={true}
+        showCart={false}
+        rightAction={
+          items.length > 0 ? (
+            <Pressable
+              onPress={handleClearCart}
+              style={styles.clearHeaderBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Xóa toàn bộ giỏ"
+            >
+              <Text style={[styles.clearHeaderText, { color: colors.danger }]}>Xóa hết</Text>
+            </Pressable>
+          ) : undefined
+        }
+      />
+
+      {items.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <View style={[styles.emptyCircle, { backgroundColor: colors.accentLight }]}>
+            <Text style={{ fontSize: 44 }}>🛍️</Text>
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            Giỏ hàng của bạn đang trống!
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
+            Khám phá hơn 25+ sản phẩm chất lượng cao của LumiShop ngay hôm nay.
+          </Text>
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Quay lại mua sắm"
+            onPress={() => router.push('/(app)')}
+            style={({ pressed }) => [
+              styles.shopNowBtn,
+              {
+                backgroundColor: colors.accent,
+                borderRadius: borderRadius.button,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+              },
+              shadow,
+            ]}
+          >
+            <Text style={styles.shopNowBtnText}>✨ Mua sắm ngay</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.id}
+            renderItem={renderCartItem}
+            contentContainerStyle={styles.listContent}
+          />
+
+          {/* Khối Tổng kết & Nút Thanh toán */}
+          <View
+            style={[
+              styles.summaryContainer,
+              {
+                backgroundColor: colors.card,
+                borderTopColor: colors.border,
+              },
+              shadow,
+            ]}
+          >
+            {/* Card lớn hiển thị chi tiết tổng tiền */}
+            <View
+              style={[
+                styles.totalCard,
+                {
+                  backgroundColor: colors.accentLight,
+                  borderRadius: borderRadius.card,
+                  borderColor: colors.accent,
+                },
+              ]}
+            >
+              <View style={styles.totalRow}>
+                <Text style={[styles.totalLabel, { color: colors.muted }]}>
+                  Tổng số lượng:
+                </Text>
+                <Text style={[styles.totalCountText, { color: colors.text }]}>
+                  {items.reduce((sum, i) => sum + i.quantity, 0)} sản phẩm
+                </Text>
+              </View>
+
+              <View style={styles.totalRow}>
+                <Text style={[styles.totalFinalLabel, { color: colors.text }]}>
+                  Tổng thanh toán:
+                </Text>
+                <Text style={[styles.totalAmount, { color: colors.accent }]}>
+                  {formatCurrency(total)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Nút Thanh toán to, bo tròn 24 */}
+            <Pressable
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Tiến hành thanh toán đơn hàng"
+              onPress={() => router.push('/(app)/checkout')}
+              style={({ pressed }) => [
+                styles.checkoutBtn,
+                {
+                  backgroundColor: colors.accent,
+                  borderRadius: borderRadius.button,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                },
+                shadow,
+              ]}
+            >
+              <Text style={styles.checkoutBtnText}>
+                Tiến Hành Thanh Toán ({items.length} món) →
+              </Text>
+            </Pressable>
+          </View>
+        </>
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  clearHeaderBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  clearHeaderText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 220,
+  },
+  itemCard: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  itemImage: {
+    width: 65,
+    height: 65,
+    backgroundColor: '#F1F5F9',
+  },
+  itemInfo: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  itemName: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 19,
+    marginBottom: 4,
+  },
+  itemPrice: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  quantityPicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    height: 32,
+  },
+  qtyBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  qtyText: {
+    minWidth: 26,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  deleteBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  shopNowBtn: {
+    minHeight: 50,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shopNowBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  summaryContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 18,
+    borderTopWidth: 1,
+  },
+  totalCard: {
+    padding: 14,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 2,
+  },
+  totalLabel: {
+    fontSize: 13,
+  },
+  totalCountText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  totalFinalLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  totalAmount: {
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  checkoutBtn: {
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkoutBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+});
+
+
+==> app\(app)\checkout.tsx <==
+// app/(app)/checkout.tsx
+// Màn hình Thanh toán LumiShop: Form giao hàng bo góc 12, Voucher có chip kiểm tra và Nút đặt hàng bo tròn 24
+
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  SafeAreaView,
+  Alert,
+  Platform,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useCartStore } from '../../store/cartStore';
+import { useAuthStore } from '../../store/authStore';
+import { useTheme } from '../../theme/useTheme';
+import { Header } from '../../components/Header';
+import { useCheckVoucher } from '../../hooks/useCheckVoucher';
+import { useCreateOrder } from '../../hooks/useCreateOrder';
+import { calculateTotal, formatCurrency } from '../../utils/calculateTotal';
+import { Voucher, Order } from '../../types';
+
+export default function CheckoutScreen() {
+  const router = useRouter();
+  const { colors, borderRadius, shadow, shadowSm } = useTheme();
+  const { items, clearCart } = useCartStore();
+  const { user } = useAuthStore();
+
+  const { checkVoucher, isLoading: isCheckingVoucher } = useCheckVoucher();
+  const { createOrder, isLoading: isCreatingOrder } = useCreateOrder();
+
+  // Form giao hàng
+  const [customerName, setCustomerName] = useState(user?.name || user?.username || '');
+  const [customerPhone, setCustomerPhone] = useState('0901234567');
+  const [customerAddress, setCustomerAddress] = useState('Số 123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh');
+
+  // Trạng thái voucher
+  const [voucherCodeInput, setVoucherCodeInput] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
+  const [voucherMessage, setVoucherMessage] = useState<{ text: string; isError: boolean } | null>(null);
+
+  // Tính tiền
+  const { subtotal, discountAmount, total } = calculateTotal(items, appliedVoucher);
+
+  // Xử lý áp dụng voucher
+  const handleApplyVoucher = async () => {
+    if (!voucherCodeInput.trim()) {
+      setVoucherMessage({ text: 'Vui lòng nhập mã voucher!', isError: true });
+      return;
+    }
+
+    try {
+      setVoucherMessage(null);
+      const voucher = await checkVoucher({
+        code: voucherCodeInput.trim(),
+        orderAmount: subtotal,
+      });
+
+      setAppliedVoucher(voucher);
+      setVoucherMessage({
+        text: `Đã áp dụng mã "${voucher.code}" thành công!`,
+        isError: false,
+      });
+    } catch (err: any) {
+      setAppliedVoucher(null);
+      setVoucherMessage({
+        text: err.message || 'Mã giảm giá không hợp lệ!',
+        isError: true,
+      });
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherCodeInput('');
+    setVoucherMessage(null);
+  };
+
+  // Xử lý đặt hàng
+  const handlePlaceOrder = async () => {
+    if (items.length === 0) {
+      if (Platform.OS === 'web') {
+        alert('Giỏ hàng trống: Vui lòng thêm sản phẩm vào giỏ trước khi thanh toán!');
+      } else {
+        Alert.alert('Giỏ hàng trống', 'Vui lòng thêm sản phẩm vào giỏ trước khi thanh toán!');
+      }
+      return;
+    }
+
+    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
+      if (Platform.OS === 'web') {
+        alert('Thiếu thông tin: Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ giao hàng!');
+      } else {
+        Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ giao hàng!');
+      }
+      return;
+    }
+
+    const newOrder: Order = {
+      items: [...items],
+      totalAmount: subtotal,
+      discountAmount,
+      finalAmount: total,
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      customerAddress: customerAddress.trim(),
+      voucherCode: appliedVoucher ? appliedVoucher.code : undefined,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const result = await createOrder(newOrder);
+      clearCart();
+
+      const successTitle = '🎉 Đặt hàng LumiShop thành công!';
+      const successMsg = `Đơn hàng #${result.id} đã được tiếp nhận.\nTổng thanh toán: ${formatCurrency(total)}`;
+
+      if (Platform.OS === 'web') {
+        alert(`${successTitle}\n${successMsg}`);
+        router.replace('/(app)');
+      } else {
+        Alert.alert(successTitle, successMsg, [
+          {
+            text: 'Về trang chủ LumiShop',
+            onPress: () => router.replace('/(app)'),
+          },
+        ]);
+      }
+    } catch (err: any) {
+      const errorMsg = err.message || 'Không thể tạo đơn hàng, vui lòng thử lại sau!';
+      if (Platform.OS === 'web') {
+        alert(`Lỗi đặt hàng: ${errorMsg}`);
+      } else {
+        Alert.alert('Lỗi đặt hàng', errorMsg);
+      }
+    }
+  };
+
+  if (items.length === 0) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+        <Header title="Thanh toán" showBack={true} />
+        <View style={styles.emptyContainer}>
+          <Text style={{ fontSize: 44, marginBottom: 12 }}>🛍️</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            Không có sản phẩm để thanh toán
+          </Text>
+          <Pressable
+            onPress={() => router.replace('/(app)')}
+            style={[styles.backShopBtn, { backgroundColor: colors.accent, borderRadius: borderRadius.button }]}
+          >
+            <Text style={styles.backShopBtnText}>Quay lại mua sắm</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <Header title="Thanh toán đơn hàng" showBack={true} />
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Khối 1: Form địa chỉ giao hàng */}
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderRadius: borderRadius.card,
+              borderColor: colors.border,
+            },
+            shadowSm,
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardIcon}>📍</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>
+              Thông tin nhận hàng
+            </Text>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Họ và tên người nhận *</Text>
+            <TextInput
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: colors.bg,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  borderRadius: borderRadius.input,
+                },
+              ]}
+              placeholder="Ví dụ: Nguyễn Văn A"
+              placeholderTextColor={colors.muted}
+              value={customerName}
+              onChangeText={setCustomerName}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Số điện thoại liên hệ *</Text>
+            <TextInput
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: colors.bg,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  borderRadius: borderRadius.input,
+                },
+              ]}
+              placeholder="Ví dụ: 0901234567"
+              placeholderTextColor={colors.muted}
+              keyboardType="phone-pad"
+              value={customerPhone}
+              onChangeText={setCustomerPhone}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Địa chỉ giao hàng chi tiết *</Text>
+            <TextInput
+              style={[
+                styles.textInput,
+                styles.textArea,
+                {
+                  backgroundColor: colors.bg,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  borderRadius: borderRadius.input,
+                },
+              ]}
+              placeholder="Số nhà, tên đường, phường/xã, quận/huyện..."
+              placeholderTextColor={colors.muted}
+              multiline
+              numberOfLines={3}
+              value={customerAddress}
+              onChangeText={setCustomerAddress}
+            />
+          </View>
+        </View>
+
+        {/* Khối 2: Ô nhập Voucher */}
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderRadius: borderRadius.card,
+              borderColor: colors.border,
+            },
+            shadowSm,
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardIcon}>🎟️</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>
+              Mã giảm giá LumiShop
+            </Text>
+          </View>
+
+          <View style={styles.voucherInputRow}>
+            <TextInput
+              style={[
+                styles.voucherInput,
+                {
+                  backgroundColor: colors.bg,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  borderRadius: borderRadius.input,
+                },
+              ]}
+              placeholder="Nhập mã (GIAM20, FREESHIP)..."
+              placeholderTextColor={colors.muted}
+              autoCapitalize="characters"
+              value={voucherCodeInput}
+              onChangeText={setVoucherCodeInput}
+              editable={!appliedVoucher}
+            />
+
+            {appliedVoucher ? (
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Gỡ bỏ voucher"
+                onPress={handleRemoveVoucher}
+                style={[
+                  styles.voucherBtn,
+                  {
+                    backgroundColor: colors.danger,
+                    borderRadius: borderRadius.input,
+                  },
+                ]}
+              >
+                <Text style={styles.voucherBtnText}>Gỡ bỏ</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Áp dụng mã"
+                disabled={isCheckingVoucher}
+                onPress={handleApplyVoucher}
+                style={[
+                  styles.voucherBtn,
+                  {
+                    backgroundColor: colors.accent,
+                    borderRadius: borderRadius.input,
+                    opacity: isCheckingVoucher ? 0.7 : 1,
+                  },
+                ]}
+              >
+                {isCheckingVoucher ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.voucherBtnText}>Áp dụng</Text>
+                )}
+              </Pressable>
+            )}
+          </View>
+
+          {/* Chip hiển thị voucher đã áp dụng */}
+          {appliedVoucher && (
+            <View style={[styles.appliedChip, { backgroundColor: '#D1FAE5', borderColor: '#10B981', borderRadius: borderRadius.pill }]}>
+              <Text style={styles.appliedChipText}>
+                ✅ Đã áp dụng mã {appliedVoucher.code} (-{appliedVoucher.discount <= 100 ? `${appliedVoucher.discount}%` : formatCurrency(appliedVoucher.discount)})
+              </Text>
+              <Pressable onPress={handleRemoveVoucher} hitSlop={6}>
+                <Text style={{ fontSize: 13, color: '#065F46', fontWeight: '800', marginLeft: 8 }}>✕</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Thông báo voucher */}
+          {voucherMessage && (
+            <Text
+              style={[
+                styles.voucherMessage,
+                { color: voucherMessage.isError ? colors.danger : colors.success },
+              ]}
+            >
+              {voucherMessage.text}
+            </Text>
+          )}
+
+          {/* Gợi ý 5 mã có sẵn trong db.json */}
+          <View style={styles.suggestionsBox}>
+            <Text style={[styles.suggestionLabel, { color: colors.muted }]}>Mã có sẵn:</Text>
+            {['GIAM10', 'GIAM20', 'FREESHIP', 'VIP50', 'SALE30'].map((code) => (
+              <Pressable
+                key={code}
+                onPress={() => {
+                  setVoucherCodeInput(code);
+                  setVoucherMessage(null);
+                }}
+                style={[
+                  styles.suggestionChip,
+                  {
+                    backgroundColor: colors.accentLight,
+                    borderColor: colors.accent,
+                    borderRadius: borderRadius.pill,
+                  },
+                ]}
+              >
+                <Text style={[styles.suggestionText, { color: colors.accent }]}>{code}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* Khối 3: Tổng kết đơn hàng */}
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderRadius: borderRadius.card,
+              borderColor: colors.border,
+            },
+            shadowSm,
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardIcon}>📦</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>
+              Tóm tắt đơn hàng ({items.length} món)
+            </Text>
+          </View>
+
+          {items.map((item) => (
+            <View key={item.id} style={styles.orderItemRow}>
+              <Text numberOfLines={1} style={[styles.orderItemName, { color: colors.text }]}>
+                {item.quantity}x {item.product.name}
+              </Text>
+              <Text style={[styles.orderItemPrice, { color: colors.text }]}>
+                {formatCurrency(item.product.price * item.quantity)}
+              </Text>
+            </View>
+          ))}
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.calcRow}>
+            <Text style={[styles.calcLabel, { color: colors.muted }]}>Tạm tính tiền hàng:</Text>
+            <Text style={[styles.calcVal, { color: colors.text }]}>{formatCurrency(subtotal)}</Text>
+          </View>
+
+          <View style={styles.calcRow}>
+            <Text style={[styles.calcLabel, { color: colors.muted }]}>Giảm giá voucher:</Text>
+            <Text style={[styles.calcVal, { color: colors.success }]}>
+              -{formatCurrency(discountAmount)}
+            </Text>
+          </View>
+
+          <View style={styles.calcRow}>
+            <Text style={[styles.calcLabel, { color: colors.muted }]}>Phí vận chuyển:</Text>
+            <Text style={[styles.calcVal, { color: colors.text }]}>Miễn phí (0đ)</Text>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.calcRow}>
+            <Text style={[styles.totalLabel, { color: colors.text }]}>Tổng thanh toán:</Text>
+            <Text style={[styles.totalAmount, { color: colors.accent }]}>
+              {formatCurrency(total)}
+            </Text>
+          </View>
+        </View>
+
+        {/* Nút Đặt hàng to, bo tròn 24 */}
+        <Pressable
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Xác nhận đặt hàng"
+          disabled={isCreatingOrder}
+          onPress={handlePlaceOrder}
+          style={({ pressed }) => [
+            styles.submitOrderBtn,
+            {
+              backgroundColor: colors.accent,
+              borderRadius: borderRadius.button,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+              opacity: isCreatingOrder ? 0.75 : 1,
+            },
+            shadow,
+          ]}
+        >
+          {isCreatingOrder ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.submitOrderBtnText}>
+              ✅ Đặt Hàng Ngay ({formatCurrency(total)})
+            </Text>
+          )}
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  card: {
+    borderWidth: 1,
+    padding: 18,
+    marginBottom: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  cardIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  inputGroup: {
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  textInput: {
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    height: 48,
+    fontSize: 14,
+  },
+  textArea: {
+    height: 80,
+    paddingTop: 10,
+    textAlignVertical: 'top',
+  },
+  voucherInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  voucherInput: {
+    flex: 1,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    height: 48,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  voucherBtn: {
+    minWidth: 90,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  voucherBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  appliedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    marginTop: 10,
+  },
+  appliedChipText: {
+    color: '#065F46',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  voucherMessage: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  suggestionsBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    flexWrap: 'wrap',
+  },
+  suggestionLabel: {
+    fontSize: 12,
+  },
+  suggestionChip: {
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  suggestionText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  orderItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  orderItemName: {
+    flex: 1,
+    fontSize: 13,
+    marginRight: 10,
+  },
+  orderItemPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  divider: {
+    height: 1,
+    marginVertical: 12,
+  },
+  calcRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  calcLabel: {
+    fontSize: 13,
+  },
+  calcVal: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  totalAmount: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  submitOrderBtn: {
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  submitOrderBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 16,
+  },
+  backShopBtn: {
+    paddingHorizontal: 22,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backShopBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+});
+
+
+==> app\(app)\index.tsx <==
+// app/(app)/index.tsx
+// Trang chủ LumiShop: Khung Full Width 100%, Lưới sản phẩm Responsive Grid (flexWrap wrap, gap: 16, mỗi ô tối đa 280px)
+
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  Alert,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useProducts } from '../../hooks/useProducts';
+import { useCartStore } from '../../store/cartStore';
+import { useAuthStore } from '../../store/authStore';
+import { useTheme } from '../../theme/useTheme';
+import { ProductRow } from '../../components/ProductRow';
+import { Header } from '../../components/Header';
+import { CategoryChip } from '../../components/CategoryChip';
+import { Product } from '../../types';
+
+export default function HomeScreen() {
+  const router = useRouter();
+  const { colors, borderRadius, shadowSm } = useTheme();
+  const { data: products, isLoading, isError, error, refetch, isFetching } = useProducts();
+  const addItem = useCartStore((state) => state.addItem);
+  const { user } = useAuthStore();
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // Lọc sản phẩm theo từ khóa tìm kiếm và danh mục
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchName = product.name
+        .toLowerCase()
+        .includes(searchTerm.trim().toLowerCase());
+      const matchCategory =
+        selectedCategory === 'all' || product.category === selectedCategory;
+      return matchName && matchCategory;
+    });
+  }, [products, searchTerm, selectedCategory]);
+
+  const handleProductPress = (product: Product) => {
+    router.push({
+      pathname: '/(app)/product/[id]',
+      params: { id: product.id },
+    });
+  };
+
+  const handleAddToCart = (product: Product) => {
+    if ((product.stock ?? 1) <= 0) {
+      if (Platform.OS === 'web') {
+        alert(`"${product.name}" đã hết hàng, không thể thêm vào giỏ!`);
+      } else {
+        Alert.alert('Hết hàng', `"${product.name}" tạm hết hàng, không thể thêm vào giỏ!`);
+      }
+      return;
+    }
+    addItem(product, 1);
+    if (Platform.OS === 'web') {
+      console.log(`Đã thêm "${product.name}" vào giỏ hàng`);
+    } else {
+      Alert.alert('Thành công', `Đã thêm "${product.name}" vào giỏ hàng!`);
+    }
+  };
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      {/* Header LumiShop Full Width */}
+      <Header
+        showBack={false}
+        showCart={true}
+        showAdmin={user?.role === 'admin'}
+        showLogout={true}
+      />
+
+      {/* Khung nội dung chính Full Width 100% không bị bóp */}
+      <View style={styles.mainContainer}>
+        {/* Lời chào & Avatar */}
+        <View
+          style={[
+            styles.greetingCard,
+            {
+              backgroundColor: colors.card,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
+          <View style={styles.userRow}>
+            <View style={[styles.avatarCircle, { backgroundColor: colors.accent }]}>
+              <Text style={styles.avatarLetter}>
+                {(user?.name || user?.username || 'U').substring(0, 1).toUpperCase()}
+              </Text>
+            </View>
+            <View>
+              <Text style={[styles.welcomeSmall, { color: colors.muted }]}>Xin chào,</Text>
+              <Text style={[styles.userName, { color: colors.text }]}>
+                {user?.name || user?.username || 'Khách hàng'} 👋
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.statusTag,
+              {
+                backgroundColor: colors.accentLight,
+                borderRadius: borderRadius.pill,
+              },
+            ]}
+          >
+            <Text style={[styles.statusTagText, { color: colors.accent }]}>
+              {user?.role === 'admin' ? '🛡️ Quản trị viên' : '✨ Thành viên Lumi'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Thanh tìm kiếm bo tròn 30 hoàn toàn */}
+        <View style={styles.searchSection}>
+          <View
+            style={[
+              styles.searchBar,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderRadius: 30,
+              },
+              shadowSm,
+            ]}
+          >
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Tìm kiếm trong 25+ sản phẩm LumiShop..."
+              placeholderTextColor={colors.muted}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              clearButtonMode="while-editing"
+            />
+            {searchTerm.length > 0 && (
+              <Pressable
+                onPress={() => setSearchTerm('')}
+                style={styles.clearSearchBtn}
+              >
+                <Text style={{ color: colors.muted, fontSize: 14 }}>✕</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        {/* Danh mục cuộn ngang với CategoryChip */}
+        <View style={styles.categorySection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScroll}
+          >
+            {[
+              { key: 'all', label: 'Tất cả', icon: '✨' },
+              { key: 'electronics', label: 'Công nghệ', icon: '🎧' },
+              { key: 'clothing', label: 'Thời trang', icon: '👕' },
+              { key: 'documents', label: 'Văn phòng', icon: '📚' },
+              { key: 'other', label: 'Phụ kiện', icon: '🕶️' },
+            ].map((cat) => (
+              <CategoryChip
+                key={cat.key}
+                label={cat.label}
+                icon={cat.icon}
+                selected={selectedCategory === cat.key}
+                onPress={() => setSelectedCategory(cat.key)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Hiển thị 4 trạng thái: Loading, Error, Empty, Success */}
+        {isLoading ? (
+          <View style={styles.centerBox}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.statusText, { color: colors.muted }]}>
+              Đang tải dữ liệu sản phẩm LumiShop...
+            </Text>
+          </View>
+        ) : isError ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.statusEmoji}>⚠️</Text>
+            <Text style={[styles.errorTitle, { color: colors.danger }]}>
+              Không thể tải dữ liệu sản phẩm
+            </Text>
+            <Text style={[styles.errorDesc, { color: colors.muted }]}>
+              {error?.message || 'Vui lòng kiểm tra lại kết nối mạng hoặc JSON Server.'}
+            </Text>
+            <Pressable
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Thử lại tải danh sách"
+              onPress={() => refetch()}
+              style={[
+                styles.retryButton,
+                {
+                  backgroundColor: colors.accent,
+                  borderRadius: borderRadius.button,
+                },
+              ]}
+            >
+              <Text style={styles.retryButtonText}>🔄 Thử lại ngay</Text>
+            </Pressable>
+          </View>
+        ) : filteredProducts.length === 0 ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.statusEmoji}>📦</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              Không tìm thấy sản phẩm
+            </Text>
+            <Text style={[styles.emptyDesc, { color: colors.muted }]}>
+              {searchTerm
+                ? `Không có kết quả nào khớp với "${searchTerm}"`
+                : 'Hiện chưa có sản phẩm nào trong danh mục này.'}
+            </Text>
+            {searchTerm ? (
+              <Pressable
+                onPress={() => setSearchTerm('')}
+                style={[
+                  styles.retryButton,
+                  {
+                    backgroundColor: colors.accent,
+                    borderRadius: borderRadius.button,
+                  },
+                ]}
+              >
+                <Text style={styles.retryButtonText}>Xóa tìm kiếm</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : (
+          /* Danh sách sản phẩm: ScrollView + View flexWrap (đúng chuẩn, không gây lỗi VirtualizedList) */
+          <ScrollView
+            contentContainerStyle={styles.gridContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isFetching}
+                onRefresh={() => {
+                  refetch();
+                }}
+                colors={[colors.accent]}
+              />
+            }
+          >
+            {filteredProducts.map((item) => (
+              <ProductRow
+                key={String(item.id)}
+                product={item}
+                onPress={handleProductPress}
+                onAddToCart={handleAddToCart}
+              />
+            ))}
+          </ScrollView>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    width: '100%',
+    maxWidth: '100%', // Giãn full 100% màn hình Web
+  },
+  mainContainer: {
+    flex: 1,
+    width: '100%',
+    maxWidth: '100%', // Full width, không bóp vào giữa
+  },
+  greetingCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarLetter: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  welcomeSmall: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  statusTag: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  statusTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  searchSection: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    height: 50,
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    height: 50,
+  },
+  clearSearchBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categorySection: {
+    paddingVertical: 10,
+  },
+  categoryScroll: {
+    paddingHorizontal: 20,
+  },
+  gridContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap', // Hiển thị lưới linh hoạt
+    gap: 16, // Khoảng cách 16px giữa các sản phẩm
+    padding: 20,
+    paddingBottom: 40,
+    justifyContent: 'flex-start',
+  },
+  centerBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  statusEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  statusText: {
+    marginTop: 14,
+    fontSize: 14,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  errorDesc: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    minHeight: 46,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  emptyDesc: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+});
+
+
+==> app\(app)\product\[id].tsx <==
+// app/(app)/product/[id].tsx
+// Chi tiết sản phẩm LumiShop: Ảnh tràn viền bo góc dưới, Nút Back tròn mờ, Rating sao vàng, Bottom bar 70% nút mua
+
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  SafeAreaView,
+  Alert,
+  Platform,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useProduct } from '../../../hooks/useProduct';
+import { useCartStore } from '../../../store/cartStore';
+import { useTheme } from '../../../theme/useTheme';
+import { formatCurrency } from '../../../utils/calculateTotal';
+
+export default function ProductDetailScreen() {
+  const router = useRouter();
+  const { colors, borderRadius, shadow } = useTheme();
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = typeof params.id === 'string' ? params.id : '';
+
+  const { product, isLoading, isError, error, refetch } = useProduct(id);
+  const addItem = useCartStore((state) => state.addItem);
+  const totalCartItems = useCartStore((state) => state.getTotalItems());
+
+  const [quantity, setQuantity] = useState(1);
+
+  const increaseQuantity = () => {
+    if (product?.stock && quantity >= product.stock) {
+      return;
+    }
+    setQuantity((prev) => prev + 1);
+  };
+
+  const decreaseQuantity = () => {
+    setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
+  };
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    if ((product.stock ?? 1) <= 0) {
+      if (Platform.OS === 'web') {
+        alert('Sản phẩm này đã tạm hết hàng!');
+      } else {
+        Alert.alert('Hết hàng', 'Sản phẩm này tạm hết hàng, không thể thêm vào giỏ!');
+      }
+      return;
+    }
+    addItem(product, quantity);
+
+    if (Platform.OS === 'web') {
+      alert(`Đã thêm ${quantity} x "${product.name}" vào giỏ hàng LumiShop!`);
+    } else {
+      Alert.alert(
+        'Thành công',
+        `Đã thêm ${quantity} x "${product.name}" vào giỏ hàng!`,
+        [
+          { text: 'Tiếp tục xem', style: 'cancel' },
+          {
+            text: 'Đến giỏ hàng',
+            onPress: () => router.push('/(app)/cart'),
+          },
+        ]
+      );
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.muted }]}>
+            Đang tải thông tin sản phẩm...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isError || !product) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+        <View style={styles.centerBox}>
+          <Text style={{ fontSize: 44, marginBottom: 12 }}>❌</Text>
+          <Text style={[styles.errorTitle, { color: colors.danger }]}>
+            Không tìm thấy sản phẩm
+          </Text>
+          <Text style={[styles.errorDesc, { color: colors.muted }]}>
+            {error?.message || 'Sản phẩm này có thể đã bị xóa hoặc không tồn tại.'}
+          </Text>
+          <Pressable
+            onPress={() => refetch()}
+            style={[styles.retryBtn, { backgroundColor: colors.accent, borderRadius: borderRadius.button }]}
+          >
+            <Text style={styles.retryBtnText}>Thử lại</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Ảnh tràn viền trên cùng với bo góc dưới 28 */}
+        <View style={styles.imageWrapper}>
+          <Image
+            source={{ uri: product.image }}
+            style={styles.heroImage}
+            contentFit="cover"
+            transition={300}
+          />
+
+          {/* Nút Back hình tròn nền mờ ở góc trên trái */}
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Quay lại danh sách"
+            onPress={() => router.back()}
+            style={({ pressed }) => [
+              styles.floatingBackBtn,
+              {
+                backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                transform: [{ scale: pressed ? 0.9 : 1 }],
+              },
+            ]}
+          >
+            <Text style={styles.backIcon}>←</Text>
+          </Pressable>
+
+          {/* Nút Giỏ hàng hình tròn góc trên phải */}
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Mở giỏ hàng"
+            onPress={() => router.push('/(app)/cart')}
+            style={({ pressed }) => [
+              styles.floatingCartBtn,
+              {
+                backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                transform: [{ scale: pressed ? 0.9 : 1 }],
+              },
+            ]}
+          >
+            <Text style={{ fontSize: 18 }}>🛍️</Text>
+            {totalCartItems > 0 && (
+              <View style={[styles.cartBadge, { backgroundColor: colors.danger }]}>
+                <Text style={styles.cartBadgeText}>
+                  {totalCartItems > 99 ? '99+' : totalCartItems}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Khối thông tin chi tiết */}
+        <View style={[styles.infoCard, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+          {/* Tag danh mục & Trạng thái tồn kho */}
+          <View style={styles.badgeRow}>
+            <View style={[styles.categoryPill, { backgroundColor: colors.accentLight }]}>
+              <Text style={[styles.categoryPillText, { color: colors.accent }]}>
+                {product.category?.toUpperCase() || 'LUMI'}
+              </Text>
+            </View>
+
+            <View style={styles.stockStatus}>
+              <Text style={{ fontSize: 10, color: product.stock > 0 ? colors.success : colors.danger }}>●</Text>
+              <Text style={[styles.stockStatusText, { color: product.stock > 0 ? colors.success : colors.danger }]}>
+                {product.stock > 0 ? `Còn hàng (${product.stock})` : 'Tạm hết'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Tên sản phẩm lớn bold */}
+          <Text style={[styles.productName, { color: colors.text }]}>
+            {product.name}
+          </Text>
+
+          {/* Rating sao vàng + Đã bán */}
+          <View style={styles.ratingSection}>
+            <View style={styles.starsBox}>
+              <Text style={styles.starYellow}>⭐⭐⭐⭐⭐</Text>
+              <Text style={[styles.ratingScore, { color: colors.text }]}>
+                {product.rating ? product.rating.toFixed(1) : '5.0'}
+              </Text>
+            </View>
+            <Text style={{ color: colors.muted, marginHorizontal: 8 }}>|</Text>
+            <Text style={[styles.soldCount, { color: colors.muted }]}>
+              Đã bán {product.stock !== undefined ? Math.max(0, 100 - product.stock) : 0}+
+            </Text>
+          </View>
+
+          {/* Giá tiền lớn nổi bật */}
+          <Text style={[styles.productPrice, { color: colors.accent }]}>
+            {formatCurrency(product.price)}
+          </Text>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          {/* Tiêu đề & Mô tả sản phẩm */}
+          <Text style={[styles.sectionHeading, { color: colors.text }]}>
+            Mô tả sản phẩm
+          </Text>
+          <Text style={[styles.descriptionText, { color: colors.muted }]}>
+            {product.description}
+          </Text>
+
+          {/* Điểm nổi bật cam kết */}
+          <View style={[styles.featuresBox, { backgroundColor: colors.bg, borderRadius: borderRadius.card }]}>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureEmoji}>🚚</Text>
+              <Text style={[styles.featureText, { color: colors.text }]}>Giao hàng nhanh toàn quốc</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureEmoji}>🛡️</Text>
+              <Text style={[styles.featureText, { color: colors.text }]}>Bảo hành chính hãng 12 tháng</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureEmoji}>🔄</Text>
+              <Text style={[styles.featureText, { color: colors.text }]}>Đổi trả trong 7 ngày</Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Bottom Bar cố định ở dưới cùng: Bộ chọn số lượng (trái) + Nút Thêm vào giỏ 70% (phải) */}
+      <View
+        style={[
+          styles.bottomBar,
+          {
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+          },
+          shadow,
+        ]}
+      >
+        {/* Bộ chọn số lượng (- 1 +) */}
+        <View style={[styles.quantityBox, { backgroundColor: colors.bg, borderRadius: borderRadius.input }]}>
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Giảm số lượng"
+            onPress={decreaseQuantity}
+            style={styles.qtyControlBtn}
+          >
+            <Text style={[styles.qtyControlText, { color: colors.text }]}>-</Text>
+          </Pressable>
+          <Text style={[styles.qtyValue, { color: colors.text }]}>{quantity}</Text>
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Tăng số lượng"
+            onPress={increaseQuantity}
+            style={styles.qtyControlBtn}
+          >
+            <Text style={[styles.qtyControlText, { color: colors.text }]}>+</Text>
+          </Pressable>
+        </View>
+
+        {/* Nút Thêm vào giỏ chiếm 70% chiều rộng */}
+        <Pressable
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={product.stock <= 0 ? 'Sản phẩm hết hàng' : 'Thêm vào giỏ hàng'}
+          disabled={product.stock <= 0}
+          onPress={handleAddToCart}
+          style={({ pressed }) => [
+            styles.addToCartBtn,
+            {
+              backgroundColor: product.stock <= 0 ? colors.muted : colors.accent,
+              borderRadius: borderRadius.button,
+              transform: [{ scale: pressed && product.stock > 0 ? 0.98 : 1 }],
+              opacity: product.stock <= 0 ? 0.6 : 1,
+            },
+            shadow,
+          ]}
+        >
+          <Text style={styles.addToCartText}>
+            {product.stock <= 0
+              ? '🚫 Tạm hết hàng'
+              : `🛍️ Thêm vào giỏ (${formatCurrency(product.price * quantity)})`}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 110,
+  },
+  imageWrapper: {
+    width: '100%',
+    height: 380,
+    position: 'relative',
+    backgroundColor: '#F1F5F9',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  floatingBackBtn: {
+    position: 'absolute',
+    top: 48,
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  backIcon: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  floatingCartBtn: {
+    position: 'absolute',
+    top: 48,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  cartBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  infoCard: {
+    padding: 22,
+    marginTop: 12,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  categoryPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  categoryPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  stockStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  stockStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  productName: {
+    fontSize: 22,
+    fontWeight: '800',
+    lineHeight: 28,
+    marginBottom: 10,
+  },
+  ratingSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  starsBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  starYellow: {
+    fontSize: 12,
+  },
+  ratingScore: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  soldCount: {
+    fontSize: 13,
+  },
+  productPrice: {
+    fontSize: 26,
+    fontWeight: '900',
+    marginBottom: 16,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 16,
+  },
+  sectionHeading: {
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  descriptionText: {
+    fontSize: 14,
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  featuresBox: {
+    padding: 16,
+    gap: 10,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  featureEmoji: {
+    fontSize: 18,
+  },
+  featureText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  centerBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    marginTop: 14,
+    fontSize: 14,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  errorDesc: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryBtn: {
+    minHeight: 46,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    borderTopWidth: 1,
+  },
+  quantityBox: {
+    flex: 0.3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 52,
+    paddingHorizontal: 6,
+  },
+  qtyControlBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyControlText: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  qtyValue: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  addToCartBtn: {
+    flex: 0.7, // Chiếm 70% chiều rộng
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  addToCartText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+});
+
+
+==> app\(auth)\sign-in.tsx <==
+// app/(auth)/sign-in.tsx
+// Màn hình Đăng nhập LumiShop: Logo lớn, TextInput bo góc 12, Nút bấm bo góc 24 và các liên kết hỗ trợ
+
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '../../store/authStore';
+import { useTheme } from '../../theme/useTheme';
+
+export default function SignInScreen() {
+  const router = useRouter();
+  const { colors, borderRadius, shadow } = useTheme();
+  const { login, isLoading } = useAuthStore();
+
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('123');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleLogin = async () => {
+    if (!username.trim()) {
+      setErrorMessage('Vui lòng nhập tên đăng nhập!');
+      return;
+    }
+
+    setErrorMessage('');
+    const success = await login(username, password);
+
+    if (success) {
+      router.replace('/(app)');
+    } else {
+      const msg = 'Đăng nhập không thành công. Vui lòng kiểm tra lại tài khoản!';
+      setErrorMessage(msg);
+      if (Platform.OS !== 'web') {
+        Alert.alert('Đăng nhập thất bại', msg);
+      }
+    }
+  };
+
+  const fillQuickAccount = (user: string, pass: string) => {
+    setUsername(user);
+    setPassword(pass);
+    setErrorMessage('');
+  };
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[styles.container, { backgroundColor: colors.bg }]}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderRadius: borderRadius.card,
+              borderColor: colors.border,
+            },
+            shadow,
+          ]}
+        >
+          {/* Logo lớn trong vòng tròn accent */}
+          <View style={styles.brandContainer}>
+            <View
+              style={[
+                styles.logoCircle,
+                {
+                  backgroundColor: colors.accentLight,
+                  borderColor: colors.accent,
+                },
+              ]}
+            >
+              <Text style={styles.logoIcon}>🛍️</Text>
+            </View>
+
+            <View style={styles.brandTitleRow}>
+              <Text style={[styles.brandLumi, { color: colors.accent }]}>Lumi</Text>
+              <Text style={[styles.brandShop, { color: colors.text }]}>Shop</Text>
+            </View>
+
+            <Text style={[styles.welcomeText, { color: colors.accent }]}>
+              Chào mừng bạn đến với LumiShop
+            </Text>
+            <Text style={[styles.subText, { color: colors.muted }]}>
+              Khám phá không gian mua sắm tối giản & đẳng cấp
+            </Text>
+          </View>
+
+          {/* Hộp báo lỗi */}
+          {errorMessage ? (
+            <View style={[styles.errorBox, { backgroundColor: '#FEE2E2', borderColor: colors.danger }]}>
+              <Text style={[styles.errorText, { color: colors.danger }]}>{errorMessage}</Text>
+            </View>
+          ) : null}
+
+          {/* Ô nhập Tài khoản */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>Tên đăng nhập</Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: colors.bg,
+                  borderColor: colors.border,
+                  borderRadius: borderRadius.input,
+                },
+              ]}
+            >
+              <Text style={styles.fieldIcon}>👤</Text>
+              <TextInput
+                style={[styles.textInput, { color: colors.text }]}
+                placeholder="Nhập tên đăng nhập..."
+                placeholderTextColor={colors.muted}
+                value={username}
+                onChangeText={(text) => {
+                  setUsername(text);
+                  setErrorMessage('');
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
+
+          {/* Ô nhập Mật khẩu */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>Mật khẩu</Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: colors.bg,
+                  borderColor: colors.border,
+                  borderRadius: borderRadius.input,
+                },
+              ]}
+            >
+              <Text style={styles.fieldIcon}>🔒</Text>
+              <TextInput
+                style={[styles.textInput, { color: colors.text }]}
+                placeholder="Nhập mật khẩu..."
+                placeholderTextColor={colors.muted}
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setErrorMessage('');
+                }}
+                autoCapitalize="none"
+              />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeBtn}
+              >
+                <Text style={{ fontSize: 16 }}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Nút Đăng nhập bo góc 24 */}
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Đăng nhập tài khoản"
+            disabled={isLoading}
+            onPress={handleLogin}
+            style={({ pressed }) => [
+              styles.submitBtn,
+              {
+                backgroundColor: colors.accent,
+                borderRadius: borderRadius.button,
+                opacity: pressed || isLoading ? 0.85 : 1,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+              },
+              shadow,
+            ]}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitBtnText}>Đăng Nhập Ngay</Text>
+            )}
+          </Pressable>
+
+          {/* Link Quên mật khẩu & Đăng ký */}
+          <View style={styles.linksRow}>
+            <Pressable
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  alert('Thông báo: Tính năng đặt lại mật khẩu đang được phát triển!');
+                } else {
+                  Alert.alert('Thông báo', 'Tính năng đặt lại mật khẩu đang được phát triển!');
+                }
+              }}
+            >
+              <Text style={[styles.linkText, { color: colors.muted }]}>Quên mật khẩu?</Text>
+            </Pressable>
+            <Text style={{ color: colors.muted }}>•</Text>
+            <Pressable onPress={() => fillQuickAccount('khachhang', '123')}>
+              <Text style={[styles.linkText, { color: colors.accent, fontWeight: '700' }]}>Đăng ký mới</Text>
+            </Pressable>
+          </View>
+
+          {/* Tài khoản mẫu tiện lợi */}
+          <View style={[styles.demoSection, { borderTopColor: colors.border }]}>
+            <Text style={[styles.demoTitle, { color: colors.muted }]}>
+              Tài khoản dùng thử nhanh:
+            </Text>
+            <View style={styles.demoChipsRow}>
+              <Pressable
+                onPress={() => fillQuickAccount('admin', '123')}
+                style={[
+                  styles.demoChip,
+                  {
+                    backgroundColor: colors.accentLight,
+                    borderColor: colors.accent,
+                    borderRadius: borderRadius.pill,
+                  },
+                ]}
+              >
+                <Text style={[styles.demoChipText, { color: colors.accent }]}>
+                  🛡️ Admin (admin/123)
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => fillQuickAccount('user', '123')}
+                style={[
+                  styles.demoChip,
+                  {
+                    backgroundColor: colors.bg,
+                    borderColor: colors.border,
+                    borderRadius: borderRadius.pill,
+                  },
+                ]}
+              >
+                <Text style={[styles.demoChipText, { color: colors.text }]}>
+                  👤 Khách (user/123)
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 440,
+    padding: 28,
+    borderWidth: 1,
+  },
+  brandContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logoCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    borderWidth: 1.5,
+  },
+  logoIcon: {
+    fontSize: 34,
+  },
+  brandTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  brandLumi: {
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  brandShop: {
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  welcomeText: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  subText: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  errorBox: {
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    minHeight: 48,
+  },
+  fieldIcon: {
+    fontSize: 16,
+    marginRight: 10,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 15,
+    minHeight: 48,
+  },
+  eyeBtn: {
+    padding: 6,
+  },
+  submitBtn: {
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 18,
+  },
+  submitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  linksRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  linkText: {
+    fontSize: 13,
+  },
+  demoSection: {
+    borderTopWidth: 1,
+    paddingTop: 16,
+    alignItems: 'center',
+  },
+  demoTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  demoChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  demoChip: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+  },
+  demoChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+});
+
+
+==> app\+not-found.tsx <==
+// app/+not-found.tsx
+// Root 404 Handler cho toàn bộ router
+import NotFoundScreen from './(app)/+not-found';
+export default NotFoundScreen;
+
+
+==> app\_layout.tsx <==
+// app/_layout.tsx
+// Root layout thuần React Native & TanStack Query (Không dùng UI library ngoài, kiểm soát 100% giao diện)
+
+import React, { useEffect, useState } from 'react';
+import { Stack } from 'expo-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { useAuthStore } from '../store/authStore';
+import { useTheme } from '../theme/useTheme';
+
+export default function RootLayout() {
+  const { isDark, colors } = useTheme();
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: 1,
+            staleTime: 1000 * 60 * 3,
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  );
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  return (
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+            contentStyle: {
+              backgroundColor: colors.bg,
+            },
+          }}
+        >
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(app)" options={{ headerShown: false }} />
+        </Stack>
+      </QueryClientProvider>
+    </SafeAreaProvider>
+  );
+}
+
+
+==> app\index.tsx <==
+// app/index.tsx
+// Điểm điều hướng đầu vào của ứng dụng, chuyển hướng đến nhóm route chính (app)
+import React from 'react';
+import { Redirect } from 'expo-router';
+
+export default function Index() {
+  return <Redirect href="/(app)" />;
+}
+
+
+==> components\CategoryChip.tsx <==
+// components/CategoryChip.tsx
+// Component hiển thị danh mục dạng viên thuốc (pill) hiện đại, hiệu ứng bấm phản hồi nhanh
+
+import React from 'react';
+import { Text, StyleSheet, Pressable } from 'react-native';
+import { useTheme } from '../theme/useTheme';
+
+interface CategoryChipProps {
+  label: string;
+  icon?: string;
+  selected: boolean;
+  onPress: () => void;
+}
+
+export const CategoryChip: React.FC<CategoryChipProps> = ({
+  label,
+  icon,
+  selected,
+  onPress,
+}) => {
+  const { colors, borderRadius, shadowSm } = useTheme();
+
+  return (
+    <Pressable
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`Danh mục ${label}`}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.chip,
+        {
+          borderRadius: borderRadius.pill,
+          backgroundColor: selected ? colors.accent : colors.card,
+          borderColor: selected ? colors.accent : colors.border,
+          transform: [{ scale: pressed ? 0.95 : 1 }],
+        },
+        selected ? shadowSm : null,
+      ]}
+    >
+      {icon ? <Text style={styles.icon}>{icon}</Text> : null}
+      <Text
+        style={[
+          styles.label,
+          {
+            color: selected ? '#FFFFFF' : colors.muted,
+            fontWeight: selected ? '700' : '500',
+          },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+};
+
+const styles = StyleSheet.create({
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  icon: {
+    fontSize: 14,
+    marginRight: 6,
+  },
+  label: {
+    fontSize: 13,
+  },
+});
+
+export default CategoryChip;
+
+
+==> components\Header.tsx <==
+// components/Header.tsx
+// Header LumiShop: Logo LumiShop bên trái, 3 icon Ionicons bên phải, trải dài 100% full width màn hình
+
+import React from 'react';
+import { View, Text, StyleSheet, Pressable, Alert, Platform } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../theme/useTheme';
+import { useCartStore } from '../store/cartStore';
+import { useAuthStore } from '../store/authStore';
+
+interface HeaderProps {
+  title?: string;
+  showBack?: boolean;
+  showCart?: boolean;
+  showAdmin?: boolean;
+  showLogout?: boolean;
+  rightAction?: React.ReactNode;
+}
+
+export const Header: React.FC<HeaderProps> = ({
+  title,
+  showBack = false,
+  showCart = true,
+  showAdmin = false,
+  showLogout = false,
+  rightAction,
+}) => {
+  const router = useRouter();
+  const { colors, shadowSm } = useTheme();
+  const totalItems = useCartStore((state) => state.getTotalItems());
+  const { user, logout } = useAuthStore();
+
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Bạn có chắc chắn muốn đăng xuất khỏi LumiShop?')) {
+        await logout();
+        router.replace('/(auth)/sign-in');
+      }
+    } else {
+      Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất khỏi LumiShop?', [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Đăng xuất',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/(auth)/sign-in');
+          },
+        },
+      ]);
+    }
+  };
+
+  return (
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.card,
+          borderBottomColor: colors.border,
+        },
+        shadowSm,
+      ]}
+    >
+      {/* Bên trái: Nút Back hoặc Logo LumiShop nằm sát bên trái */}
+      <View style={styles.leftBox}>
+        {showBack ? (
+          <View style={styles.backGroup}>
+            <Pressable
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Quay lại"
+              onPress={() => router.back()}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                {
+                  backgroundColor: colors.bg,
+                  transform: [{ scale: pressed ? 0.92 : 1 }],
+                },
+              ]}
+            >
+              <Ionicons name="arrow-back" size={22} color={colors.text} />
+            </Pressable>
+            {title ? (
+              <Text numberOfLines={1} style={[styles.screenTitle, { color: colors.text }]}>
+                {title}
+              </Text>
+            ) : null}
+          </View>
+        ) : (
+          <Pressable onPress={() => router.push('/(app)')}>
+            <Text style={[styles.brandLogo, { color: colors.accent }]}>
+              LumiShop
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* Ở giữa: Tiêu đề màn hình (nếu có khi không ở chế độ back) */}
+      {!showBack && title ? (
+        <View style={styles.centerBox}>
+          <Text numberOfLines={1} style={[styles.screenTitle, { color: colors.text }]}>
+            {title}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Bên phải: 3 icon Ionicons nằm ngang, gap: 16 sát mép phải */}
+      <View style={styles.rightBox}>
+        {rightAction ? (
+          rightAction
+        ) : (
+          <View style={styles.iconRow}>
+            {/* Icon Admin */}
+            {(showAdmin || user?.role === 'admin') && !showBack && (
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Quản trị hệ thống"
+                onPress={() => router.push('/(app)/admin')}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.iconBtn,
+                  {
+                    backgroundColor: colors.bg,
+                    transform: [{ scale: pressed ? 0.92 : 1 }],
+                  },
+                ]}
+              >
+                <Ionicons name="settings-outline" size={22} color={colors.text} />
+              </Pressable>
+            )}
+
+            {/* Icon Giỏ hàng kèm Badge số lượng màu đỏ */}
+            {showCart && (
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`Giỏ hàng ${totalItems} sản phẩm`}
+                onPress={() => router.push('/(app)/cart')}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.iconBtn,
+                  {
+                    backgroundColor: colors.bg,
+                    transform: [{ scale: pressed ? 0.92 : 1 }],
+                  },
+                ]}
+              >
+                <Ionicons name="cart-outline" size={24} color={colors.text} />
+                {totalItems > 0 && (
+                  <View style={[styles.badge, { backgroundColor: colors.danger }]}>
+                    <Text style={styles.badgeText}>
+                      {totalItems > 99 ? '99+' : totalItems}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            )}
+
+            {/* Icon Đăng xuất */}
+            {(showLogout || !showBack) && (
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Đăng xuất tài khoản"
+                onPress={handleLogout}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.iconBtn,
+                  {
+                    backgroundColor: colors.bg,
+                    transform: [{ scale: pressed ? 0.92 : 1 }],
+                  },
+                ]}
+              >
+                <Ionicons name="log-out-outline" size={22} color={colors.text} />
+              </Pressable>
+            )}
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    height: 60,
+    width: '100%',
+    maxWidth: '100%', // Trải dài full màn hình Web
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    zIndex: 10,
+  },
+  leftBox: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  brandLogo: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  backGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  screenTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  centerBox: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    pointerEvents: 'none',
+  },
+  rightBox: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  iconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16, // Khoảng cách 16px giữa các icon sát mép phải
+  },
+  iconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+});
+
+export default Header;
+
+
+==> components\ProductRow.tsx <==
+// components/ProductRow.tsx
+// Card sản phẩm LumiShop: maxWidth 280px, tỉ lệ ảnh 1:1 expo-image, rating sao vàng và nút thêm tròn nhỏ
+
+import React from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
+import { Product } from '../types';
+import { useTheme } from '../theme/useTheme';
+import { formatCurrency } from '../utils/calculateTotal';
+
+interface ProductRowProps {
+  product: Product;
+  onPress: (product: Product) => void;
+  onAddToCart?: (product: Product) => void;
+}
+
+export const ProductRow: React.FC<ProductRowProps> = ({
+  product,
+  onPress,
+  onAddToCart,
+}) => {
+  const { colors, borderRadius, shadow } = useTheme();
+
+  return (
+    <Pressable
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`Sản phẩm ${product.name}, giá ${formatCurrency(product.price)}`}
+      onPress={() => onPress(product)}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          backgroundColor: colors.card,
+          borderRadius: borderRadius.card,
+          borderColor: colors.border,
+          transform: [{ scale: pressed ? 0.97 : 1 }],
+        },
+        shadow,
+      ]}
+    >
+      {/* Ảnh sản phẩm tỉ lệ 1:1 dùng expo-image */}
+      <View style={styles.imageContainer}>
+        <Image
+          source={{ uri: product.image }}
+          style={[
+            styles.image,
+            {
+              borderTopLeftRadius: borderRadius.card,
+              borderTopRightRadius: borderRadius.card,
+            },
+          ]}
+          contentFit="cover"
+          transition={250}
+        />
+        {/* Badge danh mục nhỏ */}
+        <View style={[styles.categoryBadge, { backgroundColor: 'rgba(15, 23, 42, 0.65)' }]}>
+          <Text style={styles.categoryText}>
+            {product.category?.toUpperCase() || 'LUMI'}
+          </Text>
+        </View>
+      </View>
+
+      {/* Nội dung chi tiết */}
+      <View style={styles.content}>
+        {/* Tên sản phẩm tối đa 2 dòng */}
+        <Text
+          numberOfLines={2}
+          style={[styles.name, { color: colors.text }]}
+        >
+          {product.name}
+        </Text>
+
+        {/* Rating sao vàng và đã bán */}
+        <View style={styles.ratingRow}>
+          <Text style={styles.starIcon}>⭐</Text>
+          <Text style={[styles.ratingText, { color: colors.text }]}>
+            {product.rating ? product.rating.toFixed(1) : '5.0'}
+          </Text>
+          {(product.stock ?? 1) <= 0 ? (
+            <Text style={[styles.stockText, { color: colors.danger }]}>
+              • Hết hàng
+            </Text>
+          ) : (
+            <Text style={[styles.stockText, { color: colors.muted }]}>
+              • Còn {product.stock ?? '?'}
+            </Text>
+          )}
+        </View>
+
+        {/* Khối giá tiền & Nút cộng (+) */}
+        <View style={styles.footerRow}>
+          <View style={styles.priceContainer}>
+            <Text
+              numberOfLines={1}
+              style={[styles.price, { color: colors.accent }]}
+            >
+              {formatCurrency(product.price)}
+            </Text>
+          </View>
+
+          {onAddToCart && (
+            <Pressable
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`Thêm ${product.name} vào giỏ hàng`}
+              hitSlop={8}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onAddToCart(product);
+              }}
+              style={({ pressed }) => [
+                styles.addBtn,
+                {
+                  backgroundColor: colors.accent,
+                  transform: [{ scale: pressed ? 0.88 : 1 }],
+                },
+              ]}
+            >
+              <Text style={styles.addBtnIcon}>+</Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
+    </Pressable>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    width: '100%',
+    minWidth: 220,
+    maxWidth: 280, // Đảm bảo mỗi ô sản phẩm không bao giờ to hơn 280px
+    flexGrow: 1,
+    marginBottom: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  imageContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    position: 'relative',
+    backgroundColor: '#F1F5F9',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  categoryBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  categoryText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  content: {
+    padding: 12,
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+  name: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 19,
+    minHeight: 38,
+    marginBottom: 6,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  starIcon: {
+    fontSize: 11,
+    marginRight: 3,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginRight: 4,
+  },
+  stockText: {
+    fontSize: 11,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  priceContainer: {
+    flex: 1,
+    marginRight: 6,
+  },
+  price: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  addBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtnIcon: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginTop: -1,
+  },
+});
+
+export default ProductRow;
+
+
+==> components\ProtectedRoute.tsx <==
+// components/ProtectedRoute.tsx
+// Component bọc bảo vệ route, dùng StyleSheet tùy chỉnh và ActivityIndicator React Native thuần
+
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '../store/authStore';
+import { useTheme } from '../theme/useTheme';
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const router = useRouter();
+  const { colors } = useTheme();
+  const { token, isLoading } = useAuthStore();
+
+  useEffect(() => {
+    if (!isLoading && !token) {
+      router.replace('/(auth)/sign-in');
+    }
+  }, [isLoading, token, router]);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: colors.bg }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text style={[styles.loadingText, { color: colors.muted }]}>
+          Đang xác thực tài khoản LumiShop...
+        </Text>
+      </View>
+    );
+  }
+
+  if (!token) {
+    return null;
+  }
+
+  return <>{children}</>;
+};
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  loadingText: {
+    marginTop: 14,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+});
+
+export default ProtectedRoute;
+
+
+==> data\products.ts <==
+// data/products.ts
+// Dữ liệu mẫu ban đầu (SEED data) dự phòng đồng bộ với db.json cho LumiShop
+
+import { Product, Voucher } from '../types';
+
+export const initialProducts: Product[] = [
+  {
+    id: '1',
+    name: 'Tai Nghe Không Dây Sony WH-1000XM5 Chống Ồn',
+    price: 6490000,
+    category: 'electronics',
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80',
+    stock: 15,
+    description: 'Tai nghe chống ồn đỉnh cao thế hệ mới từ Sony với 8 micro lọc âm thanh tối tân. Thời lượng pin ấn tượng lên đến 30 giờ và công nghệ sạc siêu tốc 3 phút cho 3 giờ nghe nhạc.',
+    rating: 5,
+  },
+  {
+    id: '2',
+    name: 'Bàn Phím Cơ Không Dây Keychron K2 Nhôm RGB',
+    price: 1950000,
+    category: 'electronics',
+    image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=80',
+    stock: 22,
+    description: 'Bàn phím cơ layout 75% gọn gàng, hỗ trợ kết nối Bluetooth 5.1 và cáp Type-C linh hoạt. Tương thích hoàn hảo cả MacOS và Windows cùng cảm giác gõ switch mượt mà.',
+    rating: 4.8,
+  },
+  {
+    id: '3',
+    name: 'Đồng Hồ Thông Minh Apple Watch Series 9 GPS',
+    price: 8990000,
+    category: 'electronics',
+    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=80',
+    stock: 12,
+    description: 'Màn hình Retina luôn bật siêu sáng 2000 nits, chip S9 SiP mạnh mẽ với cử chỉ chạm hai lần Double Tap kỳ diệu. Đo nhịp tim, nồng độ oxy trong máu và hỗ trợ tập luyện chuyên sâu.',
+    rating: 4.9,
+  },
+  {
+    id: '4',
+    name: 'Loa Bluetooth Marshall Emberton II Âm Thanh Đa Hướng',
+    price: 3490000,
+    category: 'electronics',
+    image: 'https://images.unsplash.com/photo-1545454675-3531b543be5d?w=500&auto=format&fit=crop&q=80',
+    stock: 18,
+    description: 'Thiết kế cổ điển đậm chất rock n roll với công nghệ âm thanh True Stereophonic 360 độ sống động. Chuẩn kháng bụi nước IP67 bền bỉ cùng thời lượng pin bền bỉ hơn 30 giờ chơi nhạc.',
+    rating: 4.7,
+  },
+  {
+    id: '5',
+    name: 'Chuột Gaming Không Dây Logitech G Pro X Superlight',
+    price: 2690000,
+    category: 'electronics',
+    image: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=500&auto=format&fit=crop&q=80',
+    stock: 25,
+    description: 'Chuột eSports siêu nhẹ dưới 63 gram với cảm biến Hero 25K chuẩn xác đến từng micromet. Kết nối không dây Lightspeed độ trễ cực thấp được các game thủ chuyên nghiệp tin cậy.',
+    rating: 4.9,
+  },
+  {
+    id: '6',
+    name: 'Máy Ảnh Mirrorless Fujifilm X-T30 II Kèm Ống Kính',
+    price: 22500000,
+    category: 'electronics',
+    image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500&auto=format&fit=crop&q=80',
+    stock: 8,
+    description: 'Cảm biến X-Trans CMOS 4 26.1MP tái tạo màu sắc phim cổ điển trứ danh của Fujifilm. Lấy nét tự động tốc độ cao chỉ trong 0.02 giây và khả năng quay video 4K sắc nét.',
+    rating: 5,
+  },
+  {
+    id: '7',
+    name: 'Sạc Dự Phòng Anker 737 GaNPrime 24000mAh 140W',
+    price: 2190000,
+    category: 'electronics',
+    image: 'https://images.unsplash.com/photo-1609592424368-244199c0ec90?w=500&auto=format&fit=crop&q=80',
+    stock: 30,
+    description: 'Công suất sạc cực đại 140W chuẩn PD 3.1 sạc nhanh cho cả MacBook Pro và iPhone cùng lúc. Màn hình thông minh kỹ thuật số hiển thị chi tiết công suất dòng điện và thời gian nạp đầy.',
+    rating: 4.8,
+  },
+  {
+    id: '8',
+    name: 'Áo Thun Unisex Cotton Pima Thoáng Mát Lumi Basic',
+    price: 250000,
+    category: 'clothing',
+    image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=80',
+    stock: 50,
+    description: 'Sợi cotton Pima thượng hạng mềm mịn gấp đôi thông thường, co giãn và thấm hút mồ hôi tối ưu. Kiểu dáng suông hiện đại dễ dàng phối đồ với quần jeans, short hoặc âu.',
+    rating: 4.6,
+  },
+  {
+    id: '9',
+    name: 'Áo Khoác Denim Vintage Wash Cổ Điển',
+    price: 580000,
+    category: 'clothing',
+    image: 'https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=500&auto=format&fit=crop&q=80',
+    stock: 16,
+    description: 'Chất liệu denim dày dặn dệt vân chéo bền bỉ với màu wash bạc bụi bặm phong cách retro. Phù hợp khoác ngoài trong những ngày se lạnh hoặc dạo phố cuối tuần.',
+    rating: 4.7,
+  },
+  {
+    id: '10',
+    name: 'Quần Tây Nam Hàn Quốc Xếp Ly Lịch Lãm',
+    price: 420000,
+    category: 'clothing',
+    image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=500&auto=format&fit=crop&q=80',
+    stock: 28,
+    description: 'Vải tuyết mưa cao cấp đứng form, hạn chế nhăn nhúm và co rút khi giặt máy. Thiết kế cạp thông minh co giãn nhẹ giúp bạn thoải mái tối đa khi làm việc cả ngày.',
+    rating: 4.5,
+  },
+  {
+    id: '11',
+    name: 'Váy Suông Linen Tự Nhiên Thắt Nơ Duyên Dáng',
+    price: 490000,
+    category: 'clothing',
+    image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500&auto=format&fit=crop&q=80',
+    stock: 14,
+    description: 'Chất vải linen dệt tự nhiên thoáng mát tuyệt đối, bay bổng nhẹ nhàng trong từng bước di chuyển. Chi tiết thắt nơ tinh tế tôn lên vóc dáng thanh lịch của quý cô hiện đại.',
+    rating: 4.9,
+  },
+  {
+    id: '12',
+    name: 'Áo Hoodie Nỉ Bông Form Rộng Streetwear',
+    price: 390000,
+    category: 'clothing',
+    image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500&auto=format&fit=crop&q=80',
+    stock: 35,
+    description: 'Chất nỉ chân cua định lượng 380gsm dày ấm, lót bông êm ái không xù lông hay xơ cứng. Mũ trùm 2 lớp đứng form kèm túi kangaroo tiện lợi giữ ấm đôi tay.',
+    rating: 4.8,
+  },
+  {
+    id: '13',
+    name: 'Quần Jeans Ống Suông Baggy Unisex Phá Cách',
+    price: 450000,
+    category: 'clothing',
+    image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&auto=format&fit=crop&q=80',
+    stock: 20,
+    description: 'Kiểu dáng baggy trendy hack dáng tôn chiều cao cực đỉnh, màu xanh wash hiện đại. Chất jeans không co giãn giữ form chuẩn đẹp sau nhiều lần giặt giũ.',
+    rating: 4.6,
+  },
+  {
+    id: '14',
+    name: 'Sổ Tay Bìa Da Thủ Công Moleskine Ruled Notebook',
+    price: 380000,
+    category: 'documents',
+    image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=80',
+    stock: 40,
+    description: 'Bìa da PU mềm mại dập chìm logo tinh xảo cùng dải thun co giãn cố định trang sổ. Giấy định lượng 100gsm màu kem chống lóa mắt và không lem mực khi viết bút máy.',
+    rating: 5,
+  },
+  {
+    id: '15',
+    name: 'Bút Ký Kim Loại Thân Nhôm Parker Jotter Original',
+    price: 320000,
+    category: 'documents',
+    image: 'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=500&auto=format&fit=crop&q=80',
+    stock: 35,
+    description: 'Biểu tượng bút ký kinh điển thế giới với tiếng bấm click đặc trưng không thể nhầm lẫn. Ruột mực Quinkflow chảy đều trơn tru, mang lại trải nghiệm viết ký tự tin sang trọng.',
+    rating: 4.9,
+  },
+  {
+    id: '16',
+    name: 'Tập Hồ Sơ Da Cao Cấp A4 Đựng Tài Liệu & Ipad',
+    price: 460000,
+    category: 'documents',
+    image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=500&auto=format&fit=crop&q=80',
+    stock: 18,
+    description: 'Cặp folder văn phòng tiện dụng với ngăn chứa vừa tài liệu hợp đồng khổ A4 và máy tính bảng. Tích hợp khe cắm namecard, kẹp bút và khóa kéo mạ đồng chắc chắn.',
+    rating: 4.7,
+  },
+  {
+    id: '17',
+    name: 'Kẹp Sách Gỗ Tự Nhiên & Bộ Đánh Dấu Trang Đồng',
+    price: 120000,
+    category: 'documents',
+    image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=500&auto=format&fit=crop&q=80',
+    stock: 45,
+    description: 'Gia công thủ công từ gỗ sồi tự nhiên cùng chi tiết lá kim loại chạm khắc hoa văn cổ điển. Món quà ý nghĩa dành cho những người yêu thích đọc sách và làm việc bàn giấy.',
+    rating: 4.8,
+  },
+  {
+    id: '18',
+    name: 'Bình Giữ Nhiệt Thép Không Gỉ Stanley Classic 750ml',
+    price: 680000,
+    category: 'other',
+    image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=500&auto=format&fit=crop&q=80',
+    stock: 25,
+    description: 'Công nghệ cách nhiệt chân không 2 lớp giữ nóng liên tục 20 giờ và giữ lạnh đá viên đến 36 giờ. Thân bình bằng thép không gỉ 18/8 không BPA cực kỳ an toàn cho sức khỏe.',
+    rating: 4.9,
+  },
+  {
+    id: '19',
+    name: 'Kính Mát Chống Tia UV Polarized Ray-Ban Wayfarer',
+    price: 1850000,
+    category: 'other',
+    image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=500&auto=format&fit=crop&q=80',
+    stock: 12,
+    description: 'Gọng kính đen bóng biểu tượng thời trang vượt thời gian, tròng kính phân cực chống lóa 100% UV. Bảo vệ mắt tối đa khi lái xe hoặc tận hưởng ánh nắng trên bãi biển mùa hè.',
+    rating: 5,
+  },
+  {
+    id: '20',
+    name: 'Balo Du Lịch Chống Rạch Nước Mark Ryden Smart',
+    price: 890000,
+    category: 'other',
+    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=80',
+    stock: 22,
+    description: 'Vải Oxford siêu bền kháng nước chống trầy rách, ngăn chứa chống sốc bảo vệ laptop 17 inch an toàn. Tích hợp cổng sạc USB thông minh và khóa số TSA chống trộm chuyên dụng.',
+    rating: 4.8,
+  },
+  {
+    id: '21',
+    name: 'Nến Thơm Tinh Dầu Tự Nhiên Lumi Scented Candle',
+    price: 280000,
+    category: 'other',
+    image: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?w=500&auto=format&fit=crop&q=80',
+    stock: 30,
+    description: 'Sáp đậu nành thiên nhiên hòa quyện hương gỗ tuyết tùng và oải hương Pháp thư giãn tinh thần. Bấc nến gỗ cháy tí tách êm dịu, giúp thanh lọc không khí và xua tan căng thẳng sau ngày dài.',
+    rating: 4.7,
+  },
+  {
+    id: '22',
+    name: 'Ví Nam Da Bò Sáp Dáng Đứng Mini Card Holder',
+    price: 320000,
+    category: 'other',
+    image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&auto=format&fit=crop&q=80',
+    stock: 26,
+    description: 'Chế tác từ da bò sáp pullup nguyên tấm càng xài càng bóng đẹp, kích thước nhỏ gọn vừa lòng bàn tay. Thiết kế thông minh chứa đến 10 thẻ ngân hàng và tiền mặt gấp gọn tiện dụng.',
+    rating: 4.6,
+  },
+  {
+    id: '23',
+    name: 'Dây Nhảy Thể Thao Không Dây Đếm Số Điện Tử',
+    price: 190000,
+    category: 'other',
+    image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=500&auto=format&fit=crop&q=80',
+    stock: 35,
+    description: 'Bóng trọng lực đôi hỗ trợ tập nhảy trong không gian nhỏ hẹp mà không lo vướng víu đập đồ đạc. Màn hình LED sắc nét hiển thị số vòng nhảy, thời gian tập và lượng calo tiêu thụ chuẩn xác.',
+    rating: 4.5,
+  },
+  {
+    id: '24',
+    name: 'Khăn Choàng Cổ Cashmere Dệt Kim Siêu Ấm',
+    price: 350000,
+    category: 'clothing',
+    image: 'https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=500&auto=format&fit=crop&q=80',
+    stock: 20,
+    description: 'Chất len Cashmere mỏng nhẹ nhưng sở hữu khả năng giữ ấm gấp 8 lần len thông thường. Tone màu trung tính thanh lịch kết hợp cùng áo dạ, áo khoác gió vô cùng nổi bật.',
+    rating: 4.9,
+  },
+  {
+    id: '25',
+    name: 'Thảm Lót Bàn Làm Việc Deskmat Da PU 2 Mặt Chống Nước',
+    price: 180000,
+    category: 'other',
+    image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500&auto=format&fit=crop&q=80',
+    stock: 40,
+    description: 'Kích thước 80x40cm bao phủ trọn vẹn bàn làm việc, chất liệu da nhân tạo 2 mặt 2 màu sắc thay đổi. Mặt da êm ái lướt chuột mượt mà, chống bám nước và dễ lau sạch khi đổ trà cafe.',
+    rating: 4.8,
+  },
+];
+
+export const initialVouchers: Voucher[] = [
+  {
+    id: '1',
+    code: 'GIAM10',
+    discount: 10,
+    status: 'active',
+    minOrderAmount: 100000,
+  },
+  {
+    id: '2',
+    code: 'GIAM20',
+    discount: 20,
+    status: 'active',
+    minOrderAmount: 200000,
+  },
+  {
+    id: '3',
+    code: 'FREESHIP',
+    discount: 30000,
+    status: 'active',
+    minOrderAmount: 150000,
+  },
+  {
+    id: '4',
+    code: 'VIP50',
+    discount: 50,
+    status: 'active',
+    minOrderAmount: 500000,
+  },
+  {
+    id: '5',
+    code: 'SALE30',
+    discount: 30,
+    status: 'active',
+    minOrderAmount: 300000,
+  },
+];
+
+export default initialProducts;
+
+
+==> db.json <==
+{
+  "products": [
+    {
+      "id": "1",
+      "name": "Tai Nghe Không Dây Sony WH-1000XM5 Chống Ồn",
+      "price": 6490000,
+      "category": "electronics",
+      "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80",
+      "stock": 15,
+      "description": "Tai nghe chống ồn đỉnh cao thế hệ mới từ Sony với 8 micro lọc âm thanh tối tân. Thời lượng pin ấn tượng lên đến 30 giờ và công nghệ sạc siêu tốc 3 phút cho 3 giờ nghe nhạc.",
+      "rating": 5
+    },
+    {
+      "id": "2",
+      "name": "Bàn Phím Cơ Không Dây Keychron K2 Nhôm RGB",
+      "price": 1950000,
+      "category": "electronics",
+      "image": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=80",
+      "stock": 22,
+      "description": "Bàn phím cơ layout 75% gọn gàng, hỗ trợ kết nối Bluetooth 5.1 và cáp Type-C linh hoạt. Tương thích hoàn hảo cả MacOS và Windows cùng cảm giác gõ switch mượt mà.",
+      "rating": 4.8
+    },
+    {
+      "id": "3",
+      "name": "Đồng Hồ Thông Minh Apple Watch Series 9 GPS",
+      "price": 8990000,
+      "category": "electronics",
+      "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=80",
+      "stock": 12,
+      "description": "Màn hình Retina luôn bật siêu sáng 2000 nits, chip S9 SiP mạnh mẽ với cử chỉ chạm hai lần Double Tap kỳ diệu. Đo nhịp tim, nồng độ oxy trong máu và hỗ trợ tập luyện chuyên sâu.",
+      "rating": 4.9
+    },
+    {
+      "id": "4",
+      "name": "Loa Bluetooth Marshall Emberton II Âm Thanh Đa Hướng",
+      "price": 3490000,
+      "category": "electronics",
+      "image": "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=500&auto=format&fit=crop&q=80",
+      "stock": 18,
+      "description": "Thiết kế cổ điển đậm chất rock n roll với công nghệ âm thanh True Stereophonic 360 độ sống động. Chuẩn kháng bụi nước IP67 bền bỉ cùng thời lượng pin bền bỉ hơn 30 giờ chơi nhạc.",
+      "rating": 4.7
+    },
+    {
+      "id": "5",
+      "name": "Chuột Gaming Không Dây Logitech G Pro X Superlight",
+      "price": 2690000,
+      "category": "electronics",
+      "image": "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=500&auto=format&fit=crop&q=80",
+      "stock": 25,
+      "description": "Chuột eSports siêu nhẹ dưới 63 gram với cảm biến Hero 25K chuẩn xác đến từng micromet. Kết nối không dây Lightspeed độ trễ cực thấp được các game thủ chuyên nghiệp tin cậy.",
+      "rating": 4.9
+    },
+    {
+      "id": "6",
+      "name": "Máy Ảnh Mirrorless Fujifilm X-T30 II Kèm Ống Kính",
+      "price": 22500000,
+      "category": "electronics",
+      "image": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500&auto=format&fit=crop&q=80",
+      "stock": 8,
+      "description": "Cảm biến X-Trans CMOS 4 26.1MP tái tạo màu sắc phim cổ điển trứ danh của Fujifilm. Lấy nét tự động tốc độ cao chỉ trong 0.02 giây và khả năng quay video 4K sắc nét.",
+      "rating": 5
+    },
+    {
+      "id": "7",
+      "name": "Sạc Dự Phòng Anker 737 GaNPrime 24000mAh 140W",
+      "price": 2190000,
+      "category": "electronics",
+      "image": "https://images.unsplash.com/photo-1609592424368-244199c0ec90?w=500&auto=format&fit=crop&q=80",
+      "stock": 30,
+      "description": "Công suất sạc cực đại 140W chuẩn PD 3.1 sạc nhanh cho cả MacBook Pro và iPhone cùng lúc. Màn hình thông minh kỹ thuật số hiển thị chi tiết công suất dòng điện và thời gian nạp đầy.",
+      "rating": 4.8
+    },
+    {
+      "id": "8",
+      "name": "Áo Thun Unisex Cotton Pima Thoáng Mát Lumi Basic",
+      "price": 250000,
+      "category": "clothing",
+      "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=80",
+      "stock": 50,
+      "description": "Sợi cotton Pima thượng hạng mềm mịn gấp đôi thông thường, co giãn và thấm hút mồ hôi tối ưu. Kiểu dáng suông hiện đại dễ dàng phối đồ với quần jeans, short hoặc âu.",
+      "rating": 4.6
+    },
+    {
+      "id": "9",
+      "name": "Áo Khoác Denim Vintage Wash Cổ Điển",
+      "price": 580000,
+      "category": "clothing",
+      "image": "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=500&auto=format&fit=crop&q=80",
+      "stock": 16,
+      "description": "Chất liệu denim dày dặn dệt vân chéo bền bỉ với màu wash bạc bụi bặm phong cách retro. Phù hợp khoác ngoài trong những ngày se lạnh hoặc dạo phố cuối tuần.",
+      "rating": 4.7
+    },
+    {
+      "id": "10",
+      "name": "Quần Tây Nam Hàn Quốc Xếp Ly Lịch Lãm",
+      "price": 420000,
+      "category": "clothing",
+      "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=500&auto=format&fit=crop&q=80",
+      "stock": 28,
+      "description": "Vải tuyết mưa cao cấp đứng form, hạn chế nhăn nhúm và co rút khi giặt máy. Thiết kế cạp thông minh co giãn nhẹ giúp bạn thoải mái tối đa khi làm việc cả ngày.",
+      "rating": 4.5
+    },
+    {
+      "id": "11",
+      "name": "Váy Suông Linen Tự Nhiên Thắt Nơ Duyên Dáng",
+      "price": 490000,
+      "category": "clothing",
+      "image": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500&auto=format&fit=crop&q=80",
+      "stock": 14,
+      "description": "Chất vải linen dệt tự nhiên thoáng mát tuyệt đối, bay bổng nhẹ nhàng trong từng bước di chuyển. Chi tiết thắt nơ tinh tế tôn lên vóc dáng thanh lịch của quý cô hiện đại.",
+      "rating": 4.9
+    },
+    {
+      "id": "12",
+      "name": "Áo Hoodie Nỉ Bông Form Rộng Streetwear",
+      "price": 390000,
+      "category": "clothing",
+      "image": "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500&auto=format&fit=crop&q=80",
+      "stock": 35,
+      "description": "Chất nỉ chân cua định lượng 380gsm dày ấm, lót bông êm ái không xù lông hay xơ cứng. Mũ trùm 2 lớp đứng form kèm túi kangaroo tiện lợi giữ ấm đôi tay.",
+      "rating": 4.8
+    },
+    {
+      "id": "13",
+      "name": "Quần Jeans Ống Suông Baggy Unisex Phá Cách",
+      "price": 450000,
+      "category": "clothing",
+      "image": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&auto=format&fit=crop&q=80",
+      "stock": 20,
+      "description": "Kiểu dáng baggy trendy hack dáng tôn chiều cao cực đỉnh, màu xanh wash hiện đại. Chất jeans không co giãn giữ form chuẩn đẹp sau nhiều lần giặt giũ.",
+      "rating": 4.6
+    },
+    {
+      "id": "14",
+      "name": "Sổ Tay Bìa Da Thủ Công Moleskine Ruled Notebook",
+      "price": 380000,
+      "category": "documents",
+      "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=80",
+      "stock": 40,
+      "description": "Bìa da PU mềm mại dập chìm logo tinh xảo cùng dải thun co giãn cố định trang sổ. Giấy định lượng 100gsm màu kem chống lóa mắt và không lem mực khi viết bút máy.",
+      "rating": 5
+    },
+    {
+      "id": "15",
+      "name": "Bút Ký Kim Loại Thân Nhôm Parker Jotter Original",
+      "price": 320000,
+      "category": "documents",
+      "image": "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=500&auto=format&fit=crop&q=80",
+      "stock": 35,
+      "description": "Biểu tượng bút ký kinh điển thế giới với tiếng bấm 'click' đặc trưng không thể nhầm lẫn. Ruột mực Quinkflow chảy đều trơn tru, mang lại trải nghiệm viết ký tự tin sang trọng.",
+      "rating": 4.9
+    },
+    {
+      "id": "16",
+      "name": "Tập Hồ Sơ Da Cao Cấp A4 Đựng Tài Liệu & Ipad",
+      "price": 460000,
+      "category": "documents",
+      "image": "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=500&auto=format&fit=crop&q=80",
+      "stock": 18,
+      "description": "Cặp folder văn phòng tiện dụng với ngăn chứa vừa tài liệu hợp đồng khổ A4 và máy tính bảng. Tích hợp khe cắm namecard, kẹp bút và khóa kéo mạ đồng chắc chắn.",
+      "rating": 4.7
+    },
+    {
+      "id": "17",
+      "name": "Kẹp Sách Gỗ Tự Nhiên & Bộ Đánh Dấu Trang Đồng",
+      "price": 120000,
+      "category": "documents",
+      "image": "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=500&auto=format&fit=crop&q=80",
+      "stock": 45,
+      "description": "Gia công thủ công từ gỗ sồi tự nhiên cùng chi tiết lá kim loại chạm khắc hoa văn cổ điển. Món quà ý nghĩa dành cho những người yêu thích đọc sách và làm việc bàn giấy.",
+      "rating": 4.8
+    },
+    {
+      "id": "18",
+      "name": "Bình Giữ Nhiệt Thép Không Gỉ Stanley Classic 750ml",
+      "price": 680000,
+      "category": "other",
+      "image": "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=500&auto=format&fit=crop&q=80",
+      "stock": 25,
+      "description": "Công nghệ cách nhiệt chân không 2 lớp giữ nóng liên tục 20 giờ và giữ lạnh đá viên đến 36 giờ. Thân bình bằng thép không gỉ 18/8 không BPA cực kỳ an toàn cho sức khỏe.",
+      "rating": 4.9
+    },
+    {
+      "id": "19",
+      "name": "Kính Mát Chống Tia UV Polarized Ray-Ban Wayfarer",
+      "price": 1850000,
+      "category": "other",
+      "image": "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=500&auto=format&fit=crop&q=80",
+      "stock": 12,
+      "description": "Gọng kính đen bóng biểu tượng thời trang vượt thời gian, tròng kính phân cực chống lóa 100% UV. Bảo vệ mắt tối đa khi lái xe hoặc tận hưởng ánh nắng trên bãi biển mùa hè.",
+      "rating": 5
+    },
+    {
+      "id": "20",
+      "name": "Balo Du Lịch Chống Rạch Nước Mark Ryden Smart",
+      "price": 890000,
+      "category": "other",
+      "image": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=80",
+      "stock": 22,
+      "description": "Vải Oxford siêu bền kháng nước chống trầy rách, ngăn chứa chống sốc bảo vệ laptop 17 inch an toàn. Tích hợp cổng sạc USB thông minh và khóa số TSA chống trộm chuyên dụng.",
+      "rating": 4.8
+    },
+    {
+      "id": "21",
+      "name": "Nến Thơm Tinh Dầu Tự Nhiên Lumi Scented Candle",
+      "price": 280000,
+      "category": "other",
+      "image": "https://images.unsplash.com/photo-1603006905003-be475563bc59?w=500&auto=format&fit=crop&q=80",
+      "stock": 30,
+      "description": "Sáp đậu nành thiên nhiên hòa quyện hương gỗ tuyết tùng và oải hương Pháp thư giãn tinh thần. Bấc nến gỗ cháy tí tách êm dịu, giúp thanh lọc không khí và xua tan căng thẳng sau ngày dài.",
+      "rating": 4.7
+    },
+    {
+      "id": "22",
+      "name": "Ví Nam Da Bò Sáp Dáng Đứng Mini Card Holder",
+      "price": 320000,
+      "category": "other",
+      "image": "https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&auto=format&fit=crop&q=80",
+      "stock": 26,
+      "description": "Chế tác từ da bò sáp pullup nguyên tấm càng xài càng bóng đẹp, kích thước nhỏ gọn vừa lòng bàn tay. Thiết kế thông minh chứa đến 10 thẻ ngân hàng và tiền mặt gấp gọn tiện dụng.",
+      "rating": 4.6
+    },
+    {
+      "id": "23",
+      "name": "Dây Nhảy Thể Thao Không Dây Đếm Số Điện Tử",
+      "price": 190000,
+      "category": "other",
+      "image": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=500&auto=format&fit=crop&q=80",
+      "stock": 35,
+      "description": "Bóng trọng lực đôi hỗ trợ tập nhảy trong không gian nhỏ hẹp mà không lo vướng víu đập đồ đạc. Màn hình LED sắc nét hiển thị số vòng nhảy, thời gian tập và lượng calo tiêu thụ chuẩn xác.",
+      "rating": 4.5
+    },
+    {
+      "id": "24",
+      "name": "Khăn Choàng Cổ Cashmere Dệt Kim Siêu Ấm",
+      "price": 350000,
+      "category": "clothing",
+      "image": "https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=500&auto=format&fit=crop&q=80",
+      "stock": 20,
+      "description": "Chất len Cashmere mỏng nhẹ nhưng sở hữu khả năng giữ ấm gấp 8 lần len thông thường. Tone màu trung tính thanh lịch kết hợp cùng áo dạ, áo khoác gió vô cùng nổi bật.",
+      "rating": 4.9
+    },
+    {
+      "id": "25",
+      "name": "Thảm Lót Bàn Làm Việc Deskmat Da PU 2 Mặt Chống Nước",
+      "price": 180000,
+      "category": "other",
+      "image": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500&auto=format&fit=crop&q=80",
+      "stock": 40,
+      "description": "Kích thước 80x40cm bao phủ trọn vẹn bàn làm việc, chất liệu da nhân tạo 2 mặt 2 màu sắc thay đổi. Mặt da êm ái lướt chuột mượt mà, chống bám nước và dễ lau sạch khi đổ trà cafe.",
+      "rating": 4.8
+    }
+  ],
+  "vouchers": [
+    {
+      "id": "1",
+      "code": "GIAM10",
+      "discount": 10,
+      "status": "active",
+      "minOrderAmount": 100000
+    },
+    {
+      "id": "2",
+      "code": "GIAM20",
+      "discount": 20,
+      "status": "active",
+      "minOrderAmount": 200000
+    },
+    {
+      "id": "3",
+      "code": "FREESHIP",
+      "discount": 30000,
+      "status": "active",
+      "minOrderAmount": 150000
+    },
+    {
+      "id": "4",
+      "code": "VIP50",
+      "discount": 50,
+      "status": "active",
+      "minOrderAmount": 500000
+    },
+    {
+      "id": "5",
+      "code": "SALE30",
+      "discount": 30,
+      "status": "active",
+      "minOrderAmount": 300000
+    }
+  ],
+  "orders": [],
+  "users": [
+    {
+      "id": "1",
+      "username": "admin",
+      "password": "123",
+      "name": "Quản Trị Viên",
+      "role": "admin"
+    },
+    {
+      "id": "2",
+      "username": "user",
+      "password": "123",
+      "name": "Khách Hàng Mẫu",
+      "role": "customer"
+    },
+    {
+      "id": "3",
+      "username": "khachhang",
+      "password": "123",
+      "name": "Khách Hàng Mới",
+      "role": "customer"
+    }
+  ]
+}
+
+==> hooks\useCheckVoucher.ts <==
+// hooks/useCheckVoucher.ts
+// Hook kiểm tra tính hợp lệ của mã giảm giá (Voucher) bằng useMutation
+
+import { useMutation } from '@tanstack/react-query';
+import axiosClient from '../api/axiosClient';
+import { Voucher } from '../types';
+import { initialVouchers } from '../data/products';
+
+interface CheckVoucherPayload {
+  code: string;
+  orderAmount?: number;
+}
+
+async function checkVoucherApi({ code, orderAmount = 0 }: CheckVoucherPayload): Promise<Voucher> {
+  const cleanCode = code.trim().toUpperCase();
+  if (!cleanCode) {
+    throw new Error('Vui lòng nhập mã giảm giá!');
+  }
+
+  let voucher: Voucher | null = null;
+
+  try {
+    const response = await axiosClient.get<Voucher[]>(`/vouchers?code=${encodeURIComponent(cleanCode)}`);
+    if (response.data && response.data.length > 0) {
+      voucher = response.data[0];
+    }
+  } catch (error) {
+    console.warn('Lỗi gọi API voucher, thử kiểm tra trong danh sách voucher dự phòng:', error);
+  }
+
+  // Fallback từ initialVouchers nếu không gọi được API
+  if (!voucher) {
+    const fallback = initialVouchers.find((v) => v.code.toUpperCase() === cleanCode);
+    if (fallback) {
+      voucher = fallback;
+    }
+  }
+
+  if (!voucher) {
+    throw new Error(`Mã giảm giá "${cleanCode}" không tồn tại hoặc đã hết hạn!`);
+  }
+
+  if (voucher.status !== 'active') {
+    throw new Error(`Mã giảm giá "${cleanCode}" hiện không khả dụng!`);
+  }
+
+  if (voucher.minOrderAmount && orderAmount < voucher.minOrderAmount) {
+    throw new Error(
+      `Mã này chỉ áp dụng cho đơn hàng từ ${new Intl.NumberFormat('vi-VN').format(voucher.minOrderAmount)}đ trở lên!`
+    );
+  }
+
+  return voucher;
+}
+
+export function useCheckVoucher() {
+  const mutation = useMutation<Voucher, Error, CheckVoucherPayload>({
+    mutationFn: checkVoucherApi,
+  });
+
+  return {
+    checkVoucher: mutation.mutateAsync,
+    voucher: mutation.data,
+    isLoading: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error,
+    reset: mutation.reset,
+  };
+}
+
+export default useCheckVoucher;
+
+
+==> hooks\useCreateOrder.ts <==
+// hooks/useCreateOrder.ts
+// Hook tạo đơn hàng mới bằng TanStack Query v5 useMutation và invalidate cache sản phẩm
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axiosClient from "../api/axiosClient";
+import { Order } from "../types";
+
+async function createOrderApi(orderData: Order): Promise<Order> {
+  try {
+    const response = await axiosClient.post<Order>("/orders", {
+      ...orderData,
+      id: orderData.id || String(Date.now()),
+      createdAt: orderData.createdAt || new Date().toISOString(),
+    });
+
+    // Trừ tồn kho cho từng sản phẩm trong đơn hàng (json-server không tự làm)
+    if (orderData.items && orderData.items.length > 0) {
+      await Promise.allSettled(
+        orderData.items.map(async (item) => {
+          try {
+            const productRes = await axiosClient.get(
+              `/products/${item.product.id}`,
+            );
+            const currentStock = productRes.data?.stock ?? 0;
+            const newStock = Math.max(0, currentStock - item.quantity);
+            await axiosClient.patch(`/products/${item.product.id}`, {
+              stock: newStock,
+            });
+          } catch (stockErr) {
+            console.warn(
+              `Không trừ được kho cho sản phẩm ${item.product.id}:`,
+              stockErr,
+            );
+          }
+        }),
+      );
+    }
+
+    return response.data;
+  } catch (error) {
+    console.warn(
+      "Lỗi khi gọi API POST /orders, lưu tạm đơn hàng offline:",
+      error,
+    );
+    // Giả lập đơn hàng thành công khi JSON Server offline
+    return {
+      ...orderData,
+      id: orderData.id || `ORDER-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      status: "pending",
+    };
+  }
+}
+
+export function useCreateOrder() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<Order, Error, Order>({
+    mutationFn: createOrderApi,
+    onSuccess: () => {
+      // Làm mới dữ liệu cache sản phẩm sau khi đặt hàng thành công
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product"] });
+    },
+  });
+
+  return {
+    createOrder: mutation.mutateAsync,
+    order: mutation.data,
+    isLoading: mutation.isPending,
+    isSuccess: mutation.isSuccess,
+    isError: mutation.isError,
+    error: mutation.error,
+    reset: mutation.reset,
+  };
+}
+
+export default useCreateOrder;
+
+
+==> hooks\useProduct.ts <==
+// hooks/useProduct.ts
+// Hook lấy thông tin chi tiết một sản phẩm theo ID bằng TanStack Query
+
+import { useQuery } from '@tanstack/react-query';
+import axiosClient from '../api/axiosClient';
+import { Product } from '../types';
+import { initialProducts } from '../data/products';
+
+async function fetchProductById(id: string): Promise<Product> {
+  try {
+    const response = await axiosClient.get<Product>(`/products/${id}`);
+    if (response.data) {
+      return response.data;
+    }
+  } catch (error) {
+    console.warn(`Lỗi fetch sản phẩm ID ${id} từ server, fallback seed:`, error);
+  }
+
+  // Fallback từ seed data nếu API lỗi hoặc không tìm thấy
+  const fallback = initialProducts.find((p) => String(p.id) === String(id));
+  if (fallback) {
+    return fallback;
+  }
+
+  throw new Error(`Không tìm thấy sản phẩm có mã #${id}`);
+}
+
+export function useProduct(id: string) {
+  const query = useQuery<Product, Error>({
+    queryKey: ['product', id],
+    queryFn: () => fetchProductById(id),
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  return {
+    product: query.data,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
+  };
+}
+
+
+export default useProduct;
+
+
+==> hooks\useProducts.ts <==
+// hooks/useProducts.ts
+// Hook lấy danh sách sản phẩm bằng TanStack Query v5 kết hợp cache AsyncStorage
+
+import { useQuery } from '@tanstack/react-query';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import axiosClient from '../api/axiosClient';
+import { Product } from '../types';
+import { initialProducts } from '../data/products';
+
+// Khóa lưu trữ cache sản phẩm theo yêu cầu đề bài
+export const PRODUCTS_CACHE_KEY = 'lostfound-shopabc-products';
+
+// Helper an toàn đọc cache từ Storage (hỗ trợ cả Web & Mobile)
+async function getCachedProducts(): Promise<Product[] | null> {
+  try {
+    const raw =
+      Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage
+        ? window.localStorage.getItem(PRODUCTS_CACHE_KEY)
+        : await AsyncStorage.getItem(PRODUCTS_CACHE_KEY);
+
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed as Product[];
+      }
+    }
+  } catch (e) {
+    console.warn('Lỗi đọc cache sản phẩm từ storage:', e);
+  }
+  return null;
+}
+
+// Helper an toàn lưu cache vào Storage
+async function setCachedProducts(products: Product[]): Promise<void> {
+  try {
+    const raw = JSON.stringify(products);
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(PRODUCTS_CACHE_KEY, raw);
+    } else {
+      await AsyncStorage.setItem(PRODUCTS_CACHE_KEY, raw);
+    }
+  } catch (error) {
+    console.warn('Lỗi khi ghi cache sản phẩm:', error);
+  }
+}
+
+// Hàm fetch danh sách sản phẩm: đọc từ API, nếu offline tự khôi phục từ AsyncStorage hoặc initialProducts
+async function fetchProducts(): Promise<Product[]> {
+  try {
+    const response = await axiosClient.get<Product[]>('/products');
+    if (response.data && Array.isArray(response.data)) {
+      await setCachedProducts(response.data);
+      return response.data;
+    }
+    return initialProducts;
+  } catch (error) {
+    console.warn('JSON Server offline, đọc từ AsyncStorage cache hoặc seed ban đầu:', error);
+    const cached = await getCachedProducts();
+    if (cached && cached.length > 0) {
+      return cached;
+    }
+    return initialProducts;
+  }
+}
+
+export function useProducts() {
+  const query = useQuery<Product[], Error>({
+    queryKey: ['products'],
+    queryFn: fetchProducts,
+    staleTime: 1000 * 60 * 5, // 5 phút cache tươi
+  });
+
+  return {
+    data: query.data ?? initialProducts,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
+    isFetching: query.isFetching,
+  };
+}
+
+export default useProducts;
+
+
+==> package.json <==
+{
+  "name": "final-exmas",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "@expo/metro-runtime": "~4.0.1",
+    "@expo/vector-icons": "^14.0.4",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@tanstack/react-query": "^5.56.2",
+    "axios": "^1.7.7",
+    "expo": "~52.0.30",
+    "expo-constants": "~17.0.5",
+    "expo-image": "~2.0.7",
+    "expo-linking": "~7.0.5",
+    "expo-router": "~4.0.10",
+    "expo-secure-store": "~14.0.1",
+    "expo-status-bar": "~2.0.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.6",
+    "react-native-paper": "^5.12.5",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "react-native-web": "~0.19.13",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "~18.3.12",
+    "eslint": "^8.57.0",
+    "eslint-config-expo": "~8.0.1",
+    "typescript": "~5.3.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "lint": "eslint ."
+  },
+  "private": true
+}
+
+
+==> store\authStore.ts <==
+// store/authStore.ts
+// Quản lý trạng thái xác thực người dùng, tích hợp SecureStore (Mobile) và fallback localStorage (Web)
+
+import { create } from 'zustand';
+import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { User } from '../types';
+import axiosClient from '../api/axiosClient';
+
+const TOKEN_KEY = 'shopabc_auth_token';
+const USER_KEY = 'shopabc_auth_user';
+
+// Helper: Lưu token an toàn (Mobile dùng SecureStore, Web dùng localStorage)
+export async function saveToken(token: string): Promise<void> {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(TOKEN_KEY, token);
+      }
+    } else {
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
+    }
+  } catch (error) {
+    console.error('Lỗi khi lưu token:', error);
+  }
+}
+
+// Helper: Đọc token
+export async function getToken(): Promise<string | null> {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return window.localStorage.getItem(TOKEN_KEY);
+      }
+      return null;
+    } else {
+      return await SecureStore.getItemAsync(TOKEN_KEY);
+    }
+  } catch (error) {
+    console.error('Lỗi khi đọc token:', error);
+    return null;
+  }
+}
+
+// Helper: Xóa token khi đăng xuất
+export async function deleteToken(): Promise<void> {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(TOKEN_KEY);
+      }
+    } else {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+    }
+  } catch (error) {
+    console.error('Lỗi khi xóa token:', error);
+  }
+}
+
+interface AuthState {
+  user: User | null;
+  token: string | null;
+  isLoading: boolean;
+  login: (username: string, password?: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null,
+  token: null,
+  isLoading: true,
+
+  // Đăng nhập: tìm kiếm user từ mock API (users?username=...) hoặc tài khoản mặc định offline
+  login: async (username: string, password?: string): Promise<boolean> => {
+    try {
+      set({ isLoading: true });
+
+      let matchedUser: User | null = null;
+      let apiOnline = false;
+
+      try {
+        const response = await axiosClient.get<any[]>(`/users?username=${encodeURIComponent(username.trim())}`);
+        apiOnline = true;
+        if (response.data && response.data.length > 0) {
+          const found = response.data[0];
+          // Kiểm tra mật khẩu nghiêm ngặt — phải khớp chính xác
+          if (found.password === password) {
+            matchedUser = {
+              id: String(found.id),
+              username: found.username,
+              name: found.name || found.username,
+              role: found.role === 'admin' ? 'admin' : 'customer',
+            };
+          } else {
+            // Tìm thấy user nhưng sai mật khẩu → từ chối ngay, không fallback
+            set({ isLoading: false });
+            return false;
+          }
+        } else {
+          // Không tìm thấy user trong DB khi API online → từ chối, không fallback
+          set({ isLoading: false });
+          return false;
+        }
+      } catch (apiErr) {
+        // Chỉ chạy fallback khi JSON Server thực sự bị tắt (network/connection error)
+        console.warn('Không gọi được API users, sử dụng tài khoản cục bộ:', apiErr);
+        apiOnline = false;
+      }
+
+      // Fallback offline: chỉ chạy khi JSON Server bị tắt (apiOnline = false)
+      if (!apiOnline && !matchedUser) {
+        if (username.trim().toLowerCase() === 'admin' && password === '123') {
+          matchedUser = {
+            id: '1',
+            username: 'admin',
+            name: 'Quản Trị Viên',
+            role: 'admin',
+          };
+        } else if (username.trim().toLowerCase() === 'user' && password === '123') {
+          matchedUser = {
+            id: '2',
+            username: 'user',
+            name: 'Người Dùng',
+            role: 'customer',
+          };
+        } else if (username.trim().toLowerCase() === 'khachhang' && password === '123') {
+          matchedUser = {
+            id: '3',
+            username: 'khachhang',
+            name: 'Khách Hàng Mới',
+            role: 'customer',
+          };
+        }
+        // Không tự cấp role admin hay cho phép đăng nhập với tên tùy ý khi offline
+      }
+
+      if (matchedUser) {
+        const fakeToken = `token_${matchedUser.id}_${Date.now()}`;
+        await saveToken(fakeToken);
+
+        // Lưu thông tin user vào storage
+        const userStr = JSON.stringify(matchedUser);
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem(USER_KEY, userStr);
+        } else {
+          await AsyncStorage.setItem(USER_KEY, userStr);
+        }
+
+        set({
+          user: matchedUser,
+          token: fakeToken,
+          isLoading: false,
+        });
+        return true;
+      }
+
+      set({ isLoading: false });
+      return false;
+    } catch (error) {
+      console.error('Lỗi khi đăng nhập:', error);
+      set({ isLoading: false });
+      return false;
+    }
+  },
+
+  // Đăng xuất: xóa token và user khỏi storage
+  logout: async () => {
+    try {
+      await deleteToken();
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(USER_KEY);
+      } else {
+        await AsyncStorage.removeItem(USER_KEY);
+      }
+    } catch (e) {
+      console.warn('Lỗi khi xóa dữ liệu auth:', e);
+    } finally {
+      set({ user: null, token: null, isLoading: false });
+    }
+  },
+
+  // Kiểm tra token và phiên đăng nhập khi khởi động ứng dụng
+  checkAuth: async () => {
+    try {
+      set({ isLoading: true });
+      const token = await getToken();
+      if (token) {
+        let userStr: string | null = null;
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+          userStr = window.localStorage.getItem(USER_KEY);
+        } else {
+          userStr = await AsyncStorage.getItem(USER_KEY);
+        }
+
+        if (userStr) {
+          try {
+            const parsedUser: User = JSON.parse(userStr);
+            set({ user: parsedUser, token, isLoading: false });
+            return;
+          } catch (e) {
+            console.error('Lỗi parse user data:', e);
+          }
+        }
+
+        // Nếu có token nhưng mất user data, tạo user tạm
+        set({
+          user: { id: '1', username: 'user', role: 'customer' },
+          token,
+          isLoading: false,
+        });
+      } else {
+        set({ user: null, token: null, isLoading: false });
+      }
+    } catch (error) {
+      console.error('Lỗi checkAuth:', error);
+      set({ user: null, token: null, isLoading: false });
+    }
+  },
+}));
+
+export default useAuthStore;
+
+
+==> store\cartStore.ts <==
+// store/cartStore.ts
+// Quản lý giỏ hàng với Zustand và lưu trữ bền vững (Persist) hỗ trợ cả Web và Mobile
+
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import { CartItem, Product } from '../types';
+
+interface CartState {
+  items: CartItem[];
+  addItem: (product: Product, quantity?: number) => void;
+  removeItem: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
+  clearCart: () => void;
+  getTotalItems: () => number;
+  getTotalAmount: () => number;
+}
+
+// Cấu hình storage tương thích tốt cả Web (localStorage) và Mobile (AsyncStorage)
+const customStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    if (Platform.OS === 'web') {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          return window.localStorage.getItem(name);
+        }
+      } catch (e) {
+        console.warn('Lỗi khi đọc localStorage trên Web:', e);
+      }
+    }
+    return AsyncStorage.getItem(name);
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem(name, value);
+          return;
+        }
+      } catch (e) {
+        console.warn('Lỗi khi ghi localStorage trên Web:', e);
+      }
+    }
+    return AsyncStorage.setItem(name, value);
+  },
+  removeItem: async (name: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(name);
+          return;
+        }
+      } catch (e) {
+        console.warn('Lỗi khi xóa localStorage trên Web:', e);
+      }
+    }
+    return AsyncStorage.removeItem(name);
+  },
+};
+
+export const useCartStore = create<CartState>()(
+  persist(
+    (set, get) => ({
+      items: [],
+
+      // Thêm sản phẩm vào giỏ hàng
+      addItem: (product: Product, quantity: number = 1) => {
+        // Chặn thêm hàng hết kho
+        if ((product.stock ?? 1) <= 0) {
+          return;
+        }
+        const currentItems = get().items;
+        const existingIndex = currentItems.findIndex(
+          (item) => item.product.id === product.id
+        );
+
+        if (existingIndex > -1) {
+          const updatedItems = [...currentItems];
+          const newQuantity = updatedItems[existingIndex].quantity + quantity;
+          // Không vượt quá số lượng tồn kho nếu có giới hạn
+          const maxStock = product.stock ?? 999;
+          updatedItems[existingIndex] = {
+            ...updatedItems[existingIndex],
+            product, // Cập nhật thông tin product mới nhất (stock, price, ...)
+            quantity: Math.min(newQuantity, maxStock),
+          };
+          set({ items: updatedItems });
+        } else {
+          const newItem: CartItem = {
+            id: `${product.id}-${Date.now()}`,
+            product,
+            quantity: Math.min(quantity, product.stock ?? 999),
+          };
+          set({ items: [...currentItems, newItem] });
+        }
+      },
+
+      // Xóa sản phẩm khỏi giỏ theo id sản phẩm
+      removeItem: (productId: string) => {
+        const updatedItems = get().items.filter(
+          (item) => item.product.id !== productId
+        );
+        set({ items: updatedItems });
+      },
+
+      // Cập nhật số lượng của một sản phẩm
+      updateQuantity: (productId: string, quantity: number) => {
+        if (quantity <= 0) {
+          get().removeItem(productId);
+          return;
+        }
+
+        const currentItems = get().items;
+        const updatedItems = currentItems.map((item) => {
+          if (item.product.id === productId) {
+            const maxStock = item.product.stock ?? 999;
+            return {
+              ...item,
+              quantity: Math.min(quantity, maxStock),
+            };
+          }
+          return item;
+        });
+        set({ items: updatedItems });
+      },
+
+      // Xóa sạch giỏ hàng
+      clearCart: () => {
+        set({ items: [] });
+      },
+
+      // Đếm tổng số lượng món đồ trong giỏ
+      getTotalItems: () => {
+        return get().items.reduce((total, item) => total + item.quantity, 0);
+      },
+
+      // Tính tổng tiền toàn bộ giỏ hàng
+      getTotalAmount: () => {
+        return get().items.reduce(
+          (total, item) => total + item.product.price * item.quantity,
+          0
+        );
+      },
+    }),
+    {
+      name: 'shopabc-cart-storage',
+      storage: createJSONStorage(() => customStorage),
+    }
+  )
+);
+
+export default useCartStore;
+
+
+==> theme\colors.ts <==
+// theme/colors.ts
+// Bảng màu LumiShop phong cách Minimalist & Indigo Sang Trọng
+
+export interface ColorTheme {
+  bg: string;
+  card: string;
+  text: string;
+  muted: string;
+  accent: string;
+  accentLight: string;
+  accentDark: string;
+  border: string;
+  success: string;
+  danger: string;
+  warning: string;
+  primary: string;
+}
+
+export const lightColors: ColorTheme = {
+  bg: '#F8F9FA', // Xám nhạt hiện đại
+  card: '#FFFFFF',
+  text: '#1E293B', // Slate 800 sắc nét
+  muted: '#64748B', // Slate 500
+  accent: '#6366F1', // Tím Indigo cao cấp
+  accentLight: '#EEF2FF', // Indigo pastel dịu nhẹ
+  accentDark: '#4F46E5', // Indigo đậm
+  border: '#F1F5F9', // Viền siêu mềm
+  success: '#10B981', // Xanh lục ngọc
+  danger: '#EF4444',
+  warning: '#F59E0B',
+  primary: '#6366F1',
+};
+
+export const darkColors: ColorTheme = {
+  bg: '#0F172A', // Nền xanh đêm sâu
+  card: '#1E293B',
+  text: '#F1F5F9',
+  muted: '#94A3B8',
+  accent: '#818CF8', // Indigo sáng nền tối
+  accentLight: '#1E1B4B',
+  accentDark: '#6366F1',
+  border: '#334155',
+  success: '#34D399',
+  danger: '#F87171',
+  warning: '#FBBF24',
+  primary: '#818CF8',
+};
+
+export const colors = {
+  light: lightColors,
+  dark: darkColors,
+};
+
+export default colors;
+
+
+==> theme\useTheme.ts <==
+// theme/useTheme.ts
+// Hook cung cấp bảng màu, bán kính bo góc và hiệu ứng đổ bóng mềm cho LumiShop
+
+import { useColorScheme, Platform, ViewStyle } from 'react-native';
+import { colors, ColorTheme } from './colors';
+
+export interface UseThemeReturn {
+  colors: ColorTheme;
+  isDark: boolean;
+  colorScheme: 'light' | 'dark';
+  borderRadius: {
+    input: number;
+    card: number;
+    button: number;
+    pill: number;
+    full: number;
+  };
+  shadow: ViewStyle;
+  shadowSm: ViewStyle;
+}
+
+export function useTheme(): UseThemeReturn {
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
+  const activeColors = isDark ? colors.dark : colors.light;
+
+  const shadow: ViewStyle = Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.3 : 0.05,
+      shadowRadius: 12,
+    },
+    android: {
+      elevation: 3,
+    },
+    web: {
+      boxShadow: isDark
+        ? '0 4px 14px rgba(0, 0, 0, 0.4)'
+        : '0 4px 16px rgba(0, 0, 0, 0.05)',
+    } as any,
+    default: {},
+  });
+
+  const shadowSm: ViewStyle = Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.2 : 0.04,
+      shadowRadius: 6,
+    },
+    android: {
+      elevation: 2,
+    },
+    web: {
+      boxShadow: isDark
+        ? '0 2px 8px rgba(0, 0, 0, 0.3)'
+        : '0 2px 8px rgba(0, 0, 0, 0.04)',
+    } as any,
+    default: {},
+  });
+
+  return {
+    colors: activeColors,
+    isDark,
+    colorScheme: isDark ? 'dark' : 'light',
+    borderRadius: {
+      input: 12,
+      card: 16,
+      button: 24,
+      pill: 20,
+      full: 9999,
+    },
+    shadow,
+    shadowSm,
+  };
+}
+
+export default useTheme;
+
+
+==> types\index.ts <==
+// types/index.ts
+// Định nghĩa các interface và kiểu dữ liệu cho toàn bộ ứng dụng
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  image: string;
+  stock: number;
+  description: string;
+  rating?: number;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+}
+
+export interface CartItem {
+  id: string;
+  product: Product;
+  quantity: number;
+}
+
+export interface Voucher {
+  id: string;
+  code: string;
+  discount: number; // Tỷ lệ giảm giá (%) hoặc số tiền giảm
+  status: 'active' | 'inactive' | 'expired';
+  minOrderAmount?: number;
+}
+
+export interface Order {
+  id?: string;
+  items: CartItem[];
+  totalAmount: number;
+  discountAmount: number;
+  finalAmount: number;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  voucherCode?: string;
+  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+  createdAt: string;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  name?: string;
+  role?: 'admin' | 'customer';
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+}
+
+
+==> utils\calculateTotal.ts <==
+// utils/calculateTotal.ts
+// Tiện ích tính toán tổng tiền, tiền giảm giá và tổng thanh toán của đơn hàng
+
+import { CartItem, Voucher } from '../types';
+
+export interface OrderCalculation {
+  subtotal: number;       // Tổng tiền hàng tạm tính
+  discountAmount: number; // Số tiền được giảm
+  total: number;          // Tiền phải trả sau khi giảm
+}
+
+/**
+ * Tính tổng tiền hàng tạm tính
+ */
+export function calculateSubtotal(items: CartItem[]): number {
+  return items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+}
+
+/**
+ * Tính số tiền giảm giá theo voucher
+ * @param subtotal Tổng tiền trước giảm
+ * @param voucher Thông tin voucher (nếu có)
+ */
+export function calculateDiscount(subtotal: number, voucher?: Voucher | null): number {
+  if (!voucher || voucher.status !== 'active') {
+    return 0;
+  }
+
+  // Nếu voucher có yêu cầu đơn hàng tối thiểu
+  if (voucher.minOrderAmount && subtotal < voucher.minOrderAmount) {
+    return 0;
+  }
+
+  // Nếu discount <= 100 coi như tỷ lệ phần trăm (%), ngược lại coi như số tiền cụ thể
+  if (voucher.discount <= 100) {
+    return Math.round((subtotal * voucher.discount) / 100);
+  } else {
+    return Math.min(voucher.discount, subtotal);
+  }
+}
+
+/**
+ * Tính toàn bộ chi phí đơn hàng
+ */
+export function calculateTotal(items: CartItem[], voucher?: Voucher | null): OrderCalculation {
+  const subtotal = calculateSubtotal(items);
+  const discountAmount = calculateDiscount(subtotal, voucher);
+  const total = Math.max(0, subtotal - discountAmount);
+
+  return {
+    subtotal,
+    discountAmount,
+    total,
+  };
+}
+
+/**
+ * Định dạng tiền tệ VND (Ví dụ: 150.000 đ)
+ */
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+  }).format(amount);
+}
+
+export default calculateTotal;
+
+

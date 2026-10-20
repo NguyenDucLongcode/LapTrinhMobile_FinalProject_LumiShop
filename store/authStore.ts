@@ -72,50 +72,68 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   isLoading: true,
 
-  // Đăng nhập: tìm kiếm user từ mock API (users?username=...) hoặc tài khoản mặc định
+  // Đăng nhập: tìm kiếm user từ mock API (users?username=...) hoặc tài khoản mặc định offline
   login: async (username: string, password?: string): Promise<boolean> => {
     try {
       set({ isLoading: true });
 
-      // Gọi mock API JSON server kiểm tra user
       let matchedUser: User | null = null;
+      let apiOnline = false;
 
       try {
         const response = await axiosClient.get<any[]>(`/users?username=${encodeURIComponent(username.trim())}`);
+        apiOnline = true;
         if (response.data && response.data.length > 0) {
           const found = response.data[0];
-          // Nếu có truyền mật khẩu thì kiểm tra, hoặc so sánh với db
-          if (!password || found.password === password) {
+          // Kiểm tra mật khẩu nghiêm ngặt — phải khớp chính xác
+          if (found.password === password) {
             matchedUser = {
               id: String(found.id),
               username: found.username,
               name: found.name || found.username,
-              role: found.username.toLowerCase().includes('admin') ? 'admin' : (found.role || 'customer'),
+              role: found.role === 'admin' ? 'admin' : 'customer',
             };
+          } else {
+            // Tìm thấy user nhưng sai mật khẩu → từ chối ngay, không fallback
+            set({ isLoading: false });
+            return false;
           }
+        } else {
+          // Không tìm thấy user trong DB khi API online → từ chối, không fallback
+          set({ isLoading: false });
+          return false;
         }
       } catch (apiErr) {
+        // Chỉ chạy fallback khi JSON Server thực sự bị tắt (network/connection error)
         console.warn('Không gọi được API users, sử dụng tài khoản cục bộ:', apiErr);
+        apiOnline = false;
       }
 
-      // Fallback nếu JSON Server chưa có user hoặc offline: Cho phép tài khoản admin/123 hoặc bất kỳ user nào
-      if (!matchedUser) {
-        if (username.trim().toLowerCase() === 'admin' && (!password || password === '123')) {
+      // Fallback offline: chỉ chạy khi JSON Server bị tắt (apiOnline = false)
+      if (!apiOnline && !matchedUser) {
+        if (username.trim().toLowerCase() === 'admin' && password === '123') {
           matchedUser = {
             id: '1',
             username: 'admin',
             name: 'Quản Trị Viên',
             role: 'admin',
           };
-        } else if (username.trim()) {
-          // Cho phép đăng nhập khách thông thường
+        } else if (username.trim().toLowerCase() === 'user' && password === '123') {
           matchedUser = {
-            id: String(Date.now()),
-            username: username.trim(),
-            name: username.trim(),
-            role: username.trim().toLowerCase().includes('admin') ? 'admin' : 'customer',
+            id: '2',
+            username: 'user',
+            name: 'Người Dùng',
+            role: 'customer',
+          };
+        } else if (username.trim().toLowerCase() === 'khachhang' && password === '123') {
+          matchedUser = {
+            id: '3',
+            username: 'khachhang',
+            name: 'Khách Hàng Mới',
+            role: 'customer',
           };
         }
+        // Không tự cấp role admin hay cho phép đăng nhập với tên tùy ý khi offline
       }
 
       if (matchedUser) {

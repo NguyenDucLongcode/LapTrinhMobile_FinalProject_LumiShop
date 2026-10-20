@@ -6,7 +6,6 @@ import {
   View,
   Text,
   TextInput,
-  FlatList,
   StyleSheet,
   ActivityIndicator,
   Pressable,
@@ -56,6 +55,14 @@ export default function HomeScreen() {
   };
 
   const handleAddToCart = (product: Product) => {
+    if ((product.stock ?? 1) <= 0) {
+      if (Platform.OS === 'web') {
+        alert(`"${product.name}" đã hết hàng, không thể thêm vào giỏ!`);
+      } else {
+        Alert.alert('Hết hàng', `"${product.name}" tạm hết hàng, không thể thêm vào giỏ!`);
+      }
+      return;
+    }
     addItem(product, 1);
     if (Platform.OS === 'web') {
       console.log(`Đã thêm "${product.name}" vào giỏ hàng`);
@@ -233,18 +240,10 @@ export default function HomeScreen() {
             ) : null}
           </View>
         ) : (
-          /* Danh sách sản phẩm: Responsive Grid linh hoạt với flexWrap wrap, gap: 16 */
-          <FlatList
-            data={filteredProducts}
-            keyExtractor={(item) => String(item.id)}
+          /* Danh sách sản phẩm: ScrollView + View flexWrap (đúng chuẩn, không gây lỗi VirtualizedList) */
+          <ScrollView
             contentContainerStyle={styles.gridContent}
-            renderItem={({ item }) => (
-              <ProductRow
-                product={item}
-                onPress={handleProductPress}
-                onAddToCart={handleAddToCart}
-              />
-            )}
+            showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
                 refreshing={isFetching}
@@ -254,7 +253,16 @@ export default function HomeScreen() {
                 colors={[colors.accent]}
               />
             }
-          />
+          >
+            {filteredProducts.map((item) => (
+              <ProductRow
+                key={String(item.id)}
+                product={item}
+                onPress={handleProductPress}
+                onAddToCart={handleAddToCart}
+              />
+            ))}
+          </ScrollView>
         )}
       </View>
     </SafeAreaView>

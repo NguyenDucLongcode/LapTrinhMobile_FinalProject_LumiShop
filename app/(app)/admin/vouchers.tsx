@@ -1,5 +1,5 @@
 // app/(app)/admin/vouchers.tsx
-// Quản lý Voucher LumiShop: Xem 5 voucher có sẵn, Thêm mã mới và Xóa voucher với giao diện bo tròn mềm mại
+// Quản lý Voucher LumiShop: Xem voucher có sẵn, Thêm mã mới và Xóa voucher với giao diện bo tròn mềm mại
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -16,15 +16,18 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { Redirect } from 'expo-router';
 import { useTheme } from '../../../theme/useTheme';
 import { Header } from '../../../components/Header';
 import { formatCurrency } from '../../../utils/calculateTotal';
 import axiosClient from '../../../api/axiosClient';
 import { initialVouchers } from '../../../data/products';
 import { Voucher } from '../../../types';
+import { useAuthStore } from '../../../store/authStore';
 
 export default function AdminVouchersScreen() {
   const { colors, borderRadius, shadow, shadowSm } = useTheme();
+  const { user } = useAuthStore();
 
   const [vouchers, setVouchers] = useState<Voucher[]>(initialVouchers);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,6 +60,19 @@ export default function AdminVouchersScreen() {
     fetchVouchers();
   }, []);
 
+  // Bảo vệ phân quyền: chỉ admin mới được vào
+  if (!user || user.role !== 'admin') {
+    return <Redirect href="/(app)" />;
+  }
+
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const resetForm = () => {
     setCode('');
     setDiscount('');
@@ -67,12 +83,24 @@ export default function AdminVouchersScreen() {
   const handleCreateVoucher = async () => {
     const cleanCode = code.trim().toUpperCase();
     if (!cleanCode) {
-      Alert.alert('Lỗi', 'Vui lòng nhập mã voucher!');
+      showAlert('Lỗi', 'Vui lòng nhập mã voucher!');
       return;
     }
     const numDiscount = Number(discount);
     if (!numDiscount || numDiscount <= 0) {
-      Alert.alert('Lỗi', 'Vui lòng nhập mức giảm giá hợp lệ!');
+      showAlert('Lỗi', 'Vui lòng nhập mức giảm giá hợp lệ!');
+      return;
+    }
+    // Validate minOrder: không âm
+    const numMinOrder = parseInt(minOrder, 10);
+    if (isNaN(numMinOrder) || numMinOrder < 0) {
+      showAlert('Lỗi', 'Đơn tối thiểu phải là số không âm!');
+      return;
+    }
+    // Kiểm tra trùng mã voucher
+    const isDuplicate = vouchers.some((v) => v.code.toUpperCase() === cleanCode);
+    if (isDuplicate) {
+      showAlert('Lỗi', `Mã voucher "${cleanCode}" đã tồn tại! Vui lòng dùng mã khác.`);
       return;
     }
 
@@ -82,23 +110,20 @@ export default function AdminVouchersScreen() {
       code: cleanCode,
       discount: numDiscount,
       status: 'active',
-      minOrderAmount: Number(minOrder) || 0,
+      minOrderAmount: numMinOrder,
     };
 
     try {
       await axiosClient.post('/vouchers', newVoucher);
       setVouchers((prev) => [...prev, newVoucher]);
-    } catch (e) {
+      showAlert('Thành công', `Đã thêm voucher "${cleanCode}"!`);
+    } catch (e: any) {
       console.warn('Lỗi gọi API thêm voucher, thêm vào state local:', e);
       setVouchers((prev) => [...prev, newVoucher]);
+      showAlert('Thông báo', `Đã lưu voucher "${cleanCode}" vào bộ nhớ tạm (JSON Server offline)!`);
     } finally {
       setIsSubmitting(false);
       resetForm();
-      if (Platform.OS === 'web') {
-        alert(`Đã thêm thành công voucher "${cleanCode}"!`);
-      } else {
-        Alert.alert('Thành công', `Đã thêm voucher "${cleanCode}"!`);
-      }
     }
   };
 
@@ -106,10 +131,12 @@ export default function AdminVouchersScreen() {
     const doDelete = async () => {
       try {
         await axiosClient.delete(`/vouchers/${voucherId}`);
-      } catch (e) {
-        console.warn('Lỗi gọi API xóa voucher:', e);
-      } finally {
         setVouchers((prev) => prev.filter((v) => v.id !== voucherId));
+      } catch (e: any) {
+        console.warn('Lỗi gọi API xóa voucher:', e);
+        // Xóa khỏi local state để UI phản hồi mượt mà
+        setVouchers((prev) => prev.filter((v) => v.id !== voucherId));
+        showAlert('Thông báo', 'Đã xóa voucher khỏi bộ nhớ tạm (JSON Server offline)!');
       }
     };
 

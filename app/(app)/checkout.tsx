@@ -83,12 +83,20 @@ export default function CheckoutScreen() {
   // Xử lý đặt hàng
   const handlePlaceOrder = async () => {
     if (items.length === 0) {
-      Alert.alert('Giỏ hàng trống', 'Vui lòng thêm sản phẩm vào giỏ trước khi thanh toán!');
+      if (Platform.OS === 'web') {
+        alert('Giỏ hàng trống: Vui lòng thêm sản phẩm vào giỏ trước khi thanh toán!');
+      } else {
+        Alert.alert('Giỏ hàng trống', 'Vui lòng thêm sản phẩm vào giỏ trước khi thanh toán!');
+      }
       return;
     }
 
     if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ giao hàng!');
+      if (Platform.OS === 'web') {
+        alert('Thiếu thông tin: Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ giao hàng!');
+      } else {
+        Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ giao hàng!');
+      }
       return;
     }
 

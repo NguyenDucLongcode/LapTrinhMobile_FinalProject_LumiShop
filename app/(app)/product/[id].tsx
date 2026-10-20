@@ -45,6 +45,14 @@ export default function ProductDetailScreen() {
 
   const handleAddToCart = () => {
     if (!product) return;
+    if ((product.stock ?? 1) <= 0) {
+      if (Platform.OS === 'web') {
+        alert('Sản phẩm này đã tạm hết hàng!');
+      } else {
+        Alert.alert('Hết hàng', 'Sản phẩm này tạm hết hàng, không thể thêm vào giỏ!');
+      }
+      return;
+    }
     addItem(product, quantity);
 
     if (Platform.OS === 'web') {
@@ -186,7 +194,7 @@ export default function ProductDetailScreen() {
             </View>
             <Text style={{ color: colors.muted, marginHorizontal: 8 }}>|</Text>
             <Text style={[styles.soldCount, { color: colors.muted }]}>
-              Đã bán 120+ sản phẩm
+              Đã bán {product.stock !== undefined ? Math.max(0, 100 - product.stock) : 0}+
             </Text>
           </View>
 
@@ -261,20 +269,24 @@ export default function ProductDetailScreen() {
         <Pressable
           accessible={true}
           accessibilityRole="button"
-          accessibilityLabel="Thêm vào giỏ hàng"
+          accessibilityLabel={product.stock <= 0 ? 'Sản phẩm hết hàng' : 'Thêm vào giỏ hàng'}
+          disabled={product.stock <= 0}
           onPress={handleAddToCart}
           style={({ pressed }) => [
             styles.addToCartBtn,
             {
-              backgroundColor: colors.accent,
+              backgroundColor: product.stock <= 0 ? colors.muted : colors.accent,
               borderRadius: borderRadius.button,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
+              transform: [{ scale: pressed && product.stock > 0 ? 0.98 : 1 }],
+              opacity: product.stock <= 0 ? 0.6 : 1,
             },
             shadow,
           ]}
         >
           <Text style={styles.addToCartText}>
-            🛍️ Thêm vào giỏ ({formatCurrency(product.price * quantity)})
+            {product.stock <= 0
+              ? '🚫 Tạm hết hàng'
+              : `🛍️ Thêm vào giỏ (${formatCurrency(product.price * quantity)})`}
           </Text>
         </Pressable>
       </View>

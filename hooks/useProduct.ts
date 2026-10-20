@@ -42,4 +42,5 @@ export function useProduct(id: string) {
   };
 }
 
+
 export default useProduct;

@@ -14,17 +14,13 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const router = useRouter();
   const { colors } = useTheme();
-  const { token, isLoading, checkAuth } = useAuthStore();
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+  const { token, isLoading } = useAuthStore();
 
   useEffect(() => {
     if (!isLoading && !token) {
       router.replace('/(auth)/sign-in');
     }
-  }, [isLoading, token]);
+  }, [isLoading, token, router]);
 
   if (isLoading) {
     return (

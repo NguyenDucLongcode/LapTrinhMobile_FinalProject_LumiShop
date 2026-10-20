@@ -76,9 +76,15 @@ export const ProductRow: React.FC<ProductRowProps> = ({
           <Text style={[styles.ratingText, { color: colors.text }]}>
             {product.rating ? product.rating.toFixed(1) : '5.0'}
           </Text>
-          <Text style={[styles.stockText, { color: colors.muted }]}>
-            • Đã bán {product.stock ? (100 - product.stock > 0 ? 100 - product.stock : 24) : 15}
-          </Text>
+          {(product.stock ?? 1) <= 0 ? (
+            <Text style={[styles.stockText, { color: colors.danger }]}>
+              • Hết hàng
+            </Text>
+          ) : (
+            <Text style={[styles.stockText, { color: colors.muted }]}>
+              • Còn {product.stock ?? '?'}
+            </Text>
+          )}
         </View>
 
         {/* Khối giá tiền & Nút cộng (+) */}

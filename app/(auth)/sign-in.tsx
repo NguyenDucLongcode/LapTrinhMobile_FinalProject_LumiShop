@@ -199,7 +199,15 @@ export default function SignInScreen() {
 
           {/* Link Quên mật khẩu & Đăng ký */}
           <View style={styles.linksRow}>
-            <Pressable onPress={() => Alert.alert('Thông báo', 'Tính năng đặt lại mật khẩu đang được phát triển!')}>
+            <Pressable
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  alert('Thông báo: Tính năng đặt lại mật khẩu đang được phát triển!');
+                } else {
+                  Alert.alert('Thông báo', 'Tính năng đặt lại mật khẩu đang được phát triển!');
+                }
+              }}
+            >
               <Text style={[styles.linkText, { color: colors.muted }]}>Quên mật khẩu?</Text>
             </Pressable>
             <Text style={{ color: colors.muted }}>•</Text>

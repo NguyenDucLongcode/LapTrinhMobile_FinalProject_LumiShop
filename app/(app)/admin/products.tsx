@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Redirect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProducts } from '../../../hooks/useProducts';
 import { useTheme } from '../../../theme/useTheme';
@@ -24,12 +25,15 @@ import { Header } from '../../../components/Header';
 import { formatCurrency } from '../../../utils/calculateTotal';
 import axiosClient from '../../../api/axiosClient';
 import { Product } from '../../../types';
+import { useAuthStore } from '../../../store/authStore';
 
 export default function AdminProductsScreen() {
   const { colors, borderRadius, shadow, shadowSm } = useTheme();
   const queryClient = useQueryClient();
   const { data: products, isLoading } = useProducts();
+  const { user } = useAuthStore();
 
+  // Tất cả useState phải khai báo trước mọi early return (Rules of Hooks)
   const [modalVisible, setModalVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,6 +47,19 @@ export default function AdminProductsScreen() {
   );
   const [description, setDescription] = useState('');
 
+  // Bảo vệ phân quyền: chỉ admin mới được vào (sau tất cả hooks)
+  if (!user || user.role !== 'admin') {
+    return <Redirect href="/(app)" />;
+  }
+
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const resetForm = () => {
     setName('');
     setPrice('');
@@ -54,12 +71,18 @@ export default function AdminProductsScreen() {
 
   const handleCreateProduct = async () => {
     if (!name.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tên sản phẩm!');
+      showAlert('Lỗi', 'Vui lòng nhập tên sản phẩm!');
       return;
     }
     const numPrice = Number(price);
     if (!numPrice || numPrice <= 0) {
-      Alert.alert('Lỗi', 'Vui lòng nhập giá hợp lệ (> 0)!');
+      showAlert('Lỗi', 'Vui lòng nhập giá hợp lệ (> 0)!');
+      return;
+    }
+    // Validate stock: chấp nhận 0 (hết hàng), không cho số âm
+    const numStock = parseInt(stock, 10);
+    if (isNaN(numStock) || numStock < 0) {
+      showAlert('Lỗi', 'Tồn kho phải là số nguyên không âm (0 hoặc lớn hơn)!');
       return;
     }
 
@@ -69,7 +92,7 @@ export default function AdminProductsScreen() {
       name: name.trim(),
       price: numPrice,
       category,
-      stock: Number(stock) || 10,
+      stock: numStock,
       image: image.trim(),
       description: description.trim() || 'Sản phẩm mới thêm tại LumiShop',
       rating: 5,
@@ -77,17 +100,15 @@ export default function AdminProductsScreen() {
 
     try {
       await axiosClient.post('/products', newProduct);
-    } catch (e) {
-      console.warn('Lỗi gọi API thêm sản phẩm:', e);
-    } finally {
       setIsSubmitting(false);
       resetForm();
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      if (Platform.OS === 'web') {
-        alert('Đã thêm sản phẩm mới thành công vào LumiShop!');
-      } else {
-        Alert.alert('Thành công', 'Đã thêm sản phẩm mới vào LumiShop!');
-      }
+      showAlert('Thành công', 'Đã thêm sản phẩm mới vào LumiShop!');
+    } catch (e: any) {
+      setIsSubmitting(false);
+      console.warn('Lỗi gọi API thêm sản phẩm:', e);
+      const errMsg = e?.message || 'Không thể thêm sản phẩm. Kiểm tra JSON Server!';
+      showAlert('Lỗi', `Không thể thêm sản phẩm!\n${errMsg}`);
     }
   };
 
@@ -95,10 +116,10 @@ export default function AdminProductsScreen() {
     const doDelete = async () => {
       try {
         await axiosClient.delete(`/products/${productId}`);
-      } catch (e) {
-        console.warn('Lỗi gọi API xóa sản phẩm:', e);
-      } finally {
         queryClient.invalidateQueries({ queryKey: ['products'] });
+      } catch (e: any) {
+        console.warn('Lỗi gọi API xóa sản phẩm:', e);
+        showAlert('Lỗi xóa sản phẩm', e?.message || 'Không thể xóa sản phẩm do JSON Server offline!');
       }
     };
 
@@ -281,6 +302,17 @@ export default function AdminProductsScreen() {
                     </Pressable>
                   ))}
                 </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Link ảnh sản phẩm (URL)</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text, borderRadius: borderRadius.input }]}
+                  placeholder="https://images.unsplash.com/..."
+                  placeholderTextColor={colors.muted}
+                  value={image}
+                  onChangeText={setImage}
+                />
               </View>
 
               <View style={styles.inputGroup}>
