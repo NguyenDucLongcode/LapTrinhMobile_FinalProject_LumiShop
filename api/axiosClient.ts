@@ -1,9 +1,8 @@
 // api/axiosClient.ts
 // Axios client dùng chung cho toàn bộ API Layer (JSON Server)
 
-
 import axios from 'axios';
-import type { AxiosInstance } from 'axios'; 
+import type { AxiosInstance } from 'axios';
 
 /** Địa chỉ JSON Server (server.cjs) */
 export const BASE_URL = 'http://localhost:3000';
@@ -21,7 +20,7 @@ export const axiosClient: AxiosInstance = axios.create({
 axiosClient.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined' && window.localStorage) {
-      const token = window.localStorage.getItem('shopabc_auth_token');
+      const token = window.localStorage.getItem('studyplanner_auth_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }

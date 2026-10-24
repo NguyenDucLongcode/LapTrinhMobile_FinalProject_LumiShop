@@ -1,81 +1,9 @@
 // types/index.ts
-// Kiểu dữ liệu khớp với các file JSON trong thư mục data/
+// Kiểu dữ liệu toàn diện và chuẩn xác cho Study Planner App
+// Khớp 100% với cấu trúc dữ liệu JSON trong thư mục data/
 
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  image: string;
-  stock: number;
-  rating: number;
-  categoryId: string;
-}
-
-export type ProductInput = Omit<Product, 'id'>;
-
-export interface Category {
-  id: string;
-  name: string;
-  description: string;
-}
-
-export type CategoryInput = Omit<Category, 'id'>;
-
-export interface CartItem {
-  id: string;
-  productId?: string;
-  product: Product;
-  quantity: number;
-}
-
-export interface Cart {
-  id: string;
-  userId: string;
-  items: CartItem[];
-  updatedAt: string;
-}
-
-export type CartInput = Omit<Cart, 'id'>;
-
-export type VoucherStatus = 'active' | 'inactive' | 'expired';
-
-export interface Voucher {
-  id: string;
-  code: string;
-  discountPercent: number;
-  minOrderValue: number;
-  status: VoucherStatus;
-  expiresAt?: string;
-}
-
-export type VoucherInput = Omit<Voucher, 'id'>;
-
-export type OrderStatus = 'pending' | 'confirmed' | 'delivered' | 'cancelled';
-
-export interface OrderItem {
-  productId: string;
-  name: string;
-  price: number;
-  quantity: number;
-}
-
-export interface Order {
-  id: string;
-  userId: string;
-  items: OrderItem[];
-  totalAmount: number;
-  status: OrderStatus;
-  shippingAddress: string;
-  createdAt: string;
-}
-
-export type CreateOrderInput = Omit<Order, 'id' | 'createdAt' | 'status'> & {
-  status?: OrderStatus;
-  createdAt?: string;
-};
-
-export type UserRole = 'admin' | 'customer';
+// ── 1. User & Auth ─────────────────────────────────────────────────────────
+export type UserRole = 'admin' | 'student';
 
 /** Bản ghi user trên JSON Server (có mật khẩu, chỉ dùng trong API layer) */
 export interface UserRecord {
@@ -107,10 +35,31 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
-export interface PaginatedResult<T> {
-  data: T[];
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
+// ── 2. Course (Môn học) ────────────────────────────────────────────────────
+export interface Course {
+  id: string;
+  code: string;
+  name: string;
+  color: string;
 }
+
+export type CourseInput = Omit<Course, 'id'>;
+
+// ── 3. Assignment (Bài tập) ────────────────────────────────────────────────
+export type AssignmentStatus = 'pending' | 'completed';
+
+export interface Assignment {
+  id: string;
+  courseId: string;
+  title: string;
+  dueAt: string;
+  status: AssignmentStatus;
+  notes?: string;
+  photoUri?: string | null;
+  createdAt: string;
+}
+
+export type AssignmentInput = Omit<Assignment, 'id' | 'createdAt' | 'status'> & {
+  status?: AssignmentStatus;
+  createdAt?: string;
+};

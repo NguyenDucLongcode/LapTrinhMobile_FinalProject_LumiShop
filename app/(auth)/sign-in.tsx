@@ -1,5 +1,5 @@
 // app/(auth)/sign-in.tsx
-// Màn hình Đăng nhập LumiShop: Logo lớn, TextInput bo góc 12, Nút bấm bo góc 24 và các liên kết hỗ trợ
+// Màn hình Đăng nhập Study Planner: Chống Chrome auto-fill triệt để
 
 import React, { useState } from 'react';
 import {
@@ -14,6 +14,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { useLogin } from '../../hooks/useAuthQuery';
@@ -40,7 +41,13 @@ export default function SignInScreen() {
     try {
       const result = await login({ username: username.trim(), password });
       await persistSession(result.user, result.token);
-      router.replace('/(app)');
+
+      // Phân quyền điều hướng theo role
+      if (result.user.role === 'admin') {
+        router.replace('/admin');
+      } else {
+        router.replace('/(app)');
+      }
     } catch (err) {
       const msg =
         err instanceof Error
@@ -53,6 +60,143 @@ export default function SignInScreen() {
     }
   };
 
+  const formContent = (
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.card,
+          borderRadius: borderRadius.card,
+          borderColor: colors.border,
+        },
+        shadow,
+      ]}
+    >
+      <Text style={[styles.welcomeText, { color: colors.text }]}>
+        Đăng nhập tài khoản
+      </Text>
+
+      {/* Error Box */}
+      {errorMessage ? (
+        <View style={[styles.errorBox, { backgroundColor: '#FEE2E2', borderColor: colors.danger }]}>
+          <Ionicons name="alert-circle" size={16} color={colors.danger} />
+          <Text style={[styles.errorText, { color: colors.danger }]}>{errorMessage}</Text>
+        </View>
+      ) : null}
+
+      {/* Username Input */}
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: colors.text }]}>Tên đăng nhập</Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor: colors.bg,
+              borderColor: colors.border,
+              borderRadius: borderRadius.input,
+            },
+          ]}
+        >
+          <Ionicons name="person-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
+          <TextInput
+            style={[styles.textInput, { color: colors.text }]}
+            placeholder="Nhập tên đăng nhập..."
+            placeholderTextColor={colors.muted}
+            value={username}
+            onChangeText={(text) => {
+              setUsername(text);
+              setErrorMessage('');
+            }}
+            autoComplete="new-password"
+            textContentType="none"
+            autoCapitalize="none"
+            autoCorrect={false}
+            {...({
+              name: 'studyplanner-unique-user',
+              id: 'studyplanner-unique-user',
+              autoComplete: 'new-password',
+            } as any)}
+          />
+        </View>
+      </View>
+
+      {/* Password Input */}
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: colors.text }]}>Mật khẩu</Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor: colors.bg,
+              borderColor: colors.border,
+              borderRadius: borderRadius.input,
+            },
+          ]}
+        >
+          <Ionicons name="lock-closed-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
+          <TextInput
+            style={[styles.textInput, { color: colors.text }]}
+            placeholder="Nhập mật khẩu..."
+            placeholderTextColor={colors.muted}
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              setErrorMessage('');
+            }}
+            autoComplete="new-password"
+            textContentType="none"
+            autoCapitalize="none"
+            autoCorrect={false}
+            {...({
+              name: 'studyplanner-unique-pwd',
+              id: 'studyplanner-unique-pwd',
+              autoComplete: 'new-password',
+            } as any)}
+          />
+          <Pressable
+            onPress={() => setShowPassword(!showPassword)}
+            style={styles.eyeBtn}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+              size={20}
+              color={colors.muted}
+            />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Submit Button */}
+      <Pressable
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel="Đăng nhập tài khoản"
+        disabled={isLoading}
+        onPress={handleLogin}
+        style={({ pressed }) => [
+          styles.submitBtn,
+          {
+            backgroundColor: colors.accent,
+            borderRadius: borderRadius.button,
+            opacity: pressed || isLoading ? 0.85 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          },
+          shadow,
+        ]}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <View style={styles.submitContent}>
+            <Ionicons name="log-in-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.submitBtnText}>Đăng Nhập</Text>
+          </View>
+        )}
+      </Pressable>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -62,158 +206,32 @@ export default function SignInScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.card,
-              borderRadius: borderRadius.card,
-              borderColor: colors.border,
-            },
-            shadow,
-          ]}
-        >
-          {/* Logo lớn trong vòng tròn accent */}
-          <View style={styles.brandContainer}>
-            <View
-              style={[
-                styles.logoCircle,
-                {
-                  backgroundColor: colors.accentLight,
-                  borderColor: colors.accent,
-                },
-              ]}
-            >
-              <Text style={styles.logoIcon}>🛍️</Text>
+        {/* Gradient Header Area */}
+        <View style={[styles.gradientHeader, { backgroundColor: colors.accent }]}>
+          <View style={styles.headerOverlay}>
+            <View style={[styles.logoCircle, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+              <Ionicons name="school" size={40} color="#FFFFFF" />
             </View>
-
-            <View style={styles.brandTitleRow}>
-              <Text style={[styles.brandLumi, { color: colors.accent }]}>Lumi</Text>
-              <Text style={[styles.brandShop, { color: colors.text }]}>Shop</Text>
-            </View>
-
-            <Text style={[styles.welcomeText, { color: colors.accent }]}>
-              Chào mừng bạn đến với LumiShop
-            </Text>
-            <Text style={[styles.subText, { color: colors.muted }]}>
-              Khám phá không gian mua sắm tối giản & đẳng cấp
-            </Text>
+            <Text style={styles.brandTitle}>Study Planner</Text>
+            <Text style={styles.brandSubtitle}>Quản lý lịch học & bài tập thông minh</Text>
           </View>
-
-          {/* Hộp báo lỗi */}
-          {errorMessage ? (
-            <View style={[styles.errorBox, { backgroundColor: '#FEE2E2', borderColor: colors.danger }]}>
-              <Text style={[styles.errorText, { color: colors.danger }]}>{errorMessage}</Text>
-            </View>
-          ) : null}
-
-          {/* Ô nhập Tài khoản */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.text }]}>Tên đăng nhập</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  backgroundColor: colors.bg,
-                  borderColor: colors.border,
-                  borderRadius: borderRadius.input,
-                },
-              ]}
-            >
-              <Text style={styles.fieldIcon}>👤</Text>
-              <TextInput
-                style={[styles.textInput, { color: colors.text }]}
-                placeholder="Nhập tên đăng nhập..."
-                placeholderTextColor={colors.muted}
-                value={username}
-                onChangeText={(text) => {
-                  setUsername(text);
-                  setErrorMessage('');
-                }}
-                autoComplete="new-password"
-                textContentType="none"
-                importantForAutofill="no"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
-
-          {/* Ô nhập Mật khẩu */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.text }]}>Mật khẩu</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  backgroundColor: colors.bg,
-                  borderColor: colors.border,
-                  borderRadius: borderRadius.input,
-                },
-              ]}
-            >
-              <Text style={styles.fieldIcon}>🔒</Text>
-              <TextInput
-                style={[styles.textInput, { color: colors.text }]}
-                placeholder="Nhập mật khẩu..."
-                placeholderTextColor={colors.muted}
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  setErrorMessage('');
-                }}
-                autoComplete="new-password"
-                textContentType="none"
-                importantForAutofill="no"
-                autoCapitalize="none"
-              />
-              <Pressable
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeBtn}
-              >
-                <Text style={{ fontSize: 16 }}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          {/* Nút Đăng nhập bo góc 24 */}
-          <Pressable
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Đăng nhập tài khoản"
-            disabled={isLoading}
-            onPress={handleLogin}
-            style={({ pressed }) => [
-              styles.submitBtn,
-              {
-                backgroundColor: colors.accent,
-                borderRadius: borderRadius.button,
-                opacity: pressed || isLoading ? 0.85 : 1,
-                transform: [{ scale: pressed ? 0.98 : 1 }],
-              },
-              shadow,
-            ]}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.submitBtnText}>Đăng Nhập Ngay</Text>
-            )}
-          </Pressable>
-
-          {/* Link Quên mật khẩu & Đăng ký */}
-          <View style={styles.linksRow}>
-            <Pressable onPress={() => Alert.alert('Thông báo', 'Tính năng đặt lại mật khẩu đang được phát triển!')}>
-              <Text style={[styles.linkText, { color: colors.muted }]}>Quên mật khẩu?</Text>
-            </Pressable>
-            <Text style={{ color: colors.muted }}>•</Text>
-            <Pressable onPress={() => Alert.alert('Thông báo', 'Tính năng đăng ký đang được phát triển!')}>
-              <Text style={[styles.linkText, { color: colors.accent, fontWeight: '700' }]}>Đăng ký mới</Text>
-            </Pressable>
-          </View>
-
         </View>
+
+        {/* Web wrap with <form autoComplete="off"> if web, otherwise render View */}
+        {Platform.OS === 'web' ? (
+          <form
+            autoComplete="off"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleLogin();
+            }}
+            style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
+          >
+            {formContent}
+          </form>
+        ) : (
+          formContent
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -225,66 +243,61 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
-  card: {
-    width: '100%',
-    maxWidth: 440,
-    padding: 28,
-    borderWidth: 1,
-  },
-  brandContainer: {
+  gradientHeader: {
+    paddingTop: 60,
+    paddingBottom: 50,
     alignItems: 'center',
-    marginBottom: 24,
+  },
+  headerOverlay: {
+    alignItems: 'center',
   },
   logoCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
-    borderWidth: 1.5,
   },
-  logoIcon: {
-    fontSize: 34,
-  },
-  brandTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  brandLumi: {
-    fontSize: 26,
+  brandTitle: {
+    fontSize: 28,
     fontWeight: '900',
+    color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-  brandShop: {
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  brandSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 6,
+  },
+  card: {
+    marginHorizontal: 20,
+    marginTop: -30,
+    padding: 24,
+    borderWidth: 1,
+    width: Platform.OS === 'web' ? '100%' : undefined,
+    maxWidth: 440,
+    alignSelf: 'center',
   },
   welcomeText: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  subText: {
-    fontSize: 13,
+    fontSize: 20,
+    fontWeight: '800',
     textAlign: 'center',
+    marginBottom: 20,
   },
   errorBox: {
-    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
     borderRadius: 10,
     borderWidth: 1,
     marginBottom: 16,
+    gap: 8,
   },
   errorText: {
     fontSize: 13,
-    textAlign: 'center',
+    flex: 1,
   },
   inputGroup: {
     marginBottom: 16,
@@ -302,7 +315,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   fieldIcon: {
-    fontSize: 16,
     marginRight: 10,
   },
   textInput: {
@@ -318,22 +330,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
-    marginBottom: 18,
+    marginBottom: 16,
+  },
+  submitContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   submitBtnText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.3,
-  },
-  linksRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 20,
-  },
-  linkText: {
-    fontSize: 13,
   },
 });

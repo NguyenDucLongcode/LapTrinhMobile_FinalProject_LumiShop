@@ -8,12 +8,14 @@ import { useTheme } from '../theme/useTheme';
 
 export default function Index() {
   const router = useRouter();
-  const { token, isLoading } = useAuthStore();
+  const { token, user, isLoading } = useAuthStore();
   const { colors } = useTheme();
 
   React.useEffect(() => {
-    if (!isLoading) router.replace(token ? '/(app)' : '/(auth)/sign-in');
-  }, [isLoading, router, token]);
+    if (!isLoading) {
+      router.replace(token ? (user?.role === 'admin' ? '/admin' : '/(app)') : '/(auth)/sign-in');
+    }
+  }, [isLoading, router, token, user?.role]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>

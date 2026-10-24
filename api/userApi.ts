@@ -1,7 +1,7 @@
 // api/userApi.ts
-// Gọi HTTP tới /users và xử lý logic đăng nhập (chưa dùng TanStack Query)
+// Gọi HTTP tới /users và xử lý logic đăng nhập
 
-import {axiosClient} from './axiosClient';
+import { axiosClient } from './axiosClient';
 import { LoginResult, User, UserRecord } from '../types';
 
 const RESOURCE = '/users';
@@ -46,7 +46,7 @@ export async function login(username: string, password: string): Promise<LoginRe
   }
 
   const user = toPublicUser(matched);
-  const token = `lumi_${user.id}_${Date.now()}`;
+  const token = `sp_${user.id}_${Date.now()}`;
 
   return { token, user };
 }

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "c1",
+    "code": "CS101",
+    "name": "Lập trình Web",
+    "color": "#6366F1"
+  },
+  {
+    "id": "c2",
+    "code": "CS201",
+    "name": "Cơ sở dữ liệu",
+    "color": "#F59E0B"
+  },
+  {
+    "id": "c3",
+    "code": "CS301",
+    "name": "Lập trình Mobile",
+    "color": "#10B981"
+  },
+  {
+    "id": "c4",
+    "code": "MA201",
+    "name": "Toán rời rạc",
+    "color": "#EF4444"
+  },
+  {
+    "id": "c5",
+    "code": "EN101",
+    "name": "Tiếng Anh chuyên ngành",
+    "color": "#8B5CF6"
+  }
+]

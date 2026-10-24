@@ -1,0 +1,152 @@
+[
+  {
+    "id": "a1",
+    "courseId": "c1",
+    "title": "Bài tập HTML/CSS cơ bản",
+    "dueAt": "2026-10-25T23:59:00.000Z",
+    "status": "pending",
+    "notes": "Xây dựng trang portfolio cá nhân với HTML5 và CSS3.",
+    "photoUri": "",
+    "createdAt": "2026-10-18T08:00:00.000Z"
+  },
+  {
+    "id": "a2",
+    "courseId": "c1",
+    "title": "Dự án ReactJS - TodoApp",
+    "dueAt": "2026-10-28T23:59:00.000Z",
+    "status": "pending",
+    "notes": "Xây dựng ứng dụng Todo sử dụng React hooks và state management.",
+    "photoUri": "",
+    "createdAt": "2026-10-19T08:00:00.000Z"
+  },
+  {
+    "id": "a3",
+    "courseId": "c1",
+    "title": "Bài tập JavaScript ES6+",
+    "dueAt": "2026-10-22T23:59:00.000Z",
+    "status": "completed",
+    "notes": "Hoàn thành 20 bài tập về Arrow functions, Destructuring, Promises.",
+    "photoUri": "",
+    "createdAt": "2026-10-15T08:00:00.000Z"
+  },
+  {
+    "id": "a4",
+    "courseId": "c2",
+    "title": "Thiết kế ERD cho hệ thống quản lý",
+    "dueAt": "2026-10-26T23:59:00.000Z",
+    "status": "pending",
+    "notes": "Vẽ sơ đồ ERD cho hệ thống quản lý thư viện, tối thiểu 8 bảng.",
+    "photoUri": "",
+    "createdAt": "2026-10-18T10:00:00.000Z"
+  },
+  {
+    "id": "a5",
+    "courseId": "c2",
+    "title": "Truy vấn SQL nâng cao",
+    "dueAt": "2026-10-24T23:59:00.000Z",
+    "status": "pending",
+    "notes": "Viết 15 câu truy vấn JOIN, SubQuery, GROUP BY trên bộ dữ liệu mẫu.",
+    "photoUri": "",
+    "createdAt": "2026-10-17T08:00:00.000Z"
+  },
+  {
+    "id": "a6",
+    "courseId": "c2",
+    "title": "Chuẩn hóa cơ sở dữ liệu",
+    "dueAt": "2026-10-20T23:59:00.000Z",
+    "status": "completed",
+    "notes": "Phân tích và chuẩn hóa bảng dữ liệu lên 3NF.",
+    "photoUri": "",
+    "createdAt": "2026-10-14T08:00:00.000Z"
+  },
+  {
+    "id": "a7",
+    "courseId": "c3",
+    "title": "Lab React Native - Navigation",
+    "dueAt": "2026-10-25T23:59:00.000Z",
+    "status": "pending",
+    "notes": "Thực hành Expo Router: Stack, Tab, Drawer navigation.",
+    "photoUri": "",
+    "createdAt": "2026-10-19T09:00:00.000Z"
+  },
+  {
+    "id": "a8",
+    "courseId": "c3",
+    "title": "Xây dựng app Thời tiết",
+    "dueAt": "2026-10-30T23:59:00.000Z",
+    "status": "pending",
+    "notes": "Sử dụng API OpenWeather, hiển thị thời tiết theo vị trí GPS.",
+    "photoUri": "",
+    "createdAt": "2026-10-20T08:00:00.000Z"
+  },
+  {
+    "id": "a9",
+    "courseId": "c3",
+    "title": "Bài tập Flexbox Layout",
+    "dueAt": "2026-10-21T23:59:00.000Z",
+    "status": "completed",
+    "notes": "Dựng 5 layout UI phức tạp bằng Flexbox trong React Native.",
+    "photoUri": "",
+    "createdAt": "2026-10-14T09:00:00.000Z"
+  },
+  {
+    "id": "a10",
+    "courseId": "c4",
+    "title": "Bài tập Lý thuyết đồ thị",
+    "dueAt": "2026-10-27T23:59:00.000Z",
+    "status": "pending",
+    "notes": "Giải 10 bài tập về BFS, DFS, đường đi ngắn nhất Dijkstra.",
+    "photoUri": "",
+    "createdAt": "2026-10-20T10:00:00.000Z"
+  },
+  {
+    "id": "a11",
+    "courseId": "c4",
+    "title": "Bài tập Tổ hợp & Hoán vị",
+    "dueAt": "2026-10-24T23:59:00.000Z",
+    "status": "pending",
+    "notes": "Hoàn thành chương 3: Nguyên lý đếm, tổ hợp, hoán vị.",
+    "photoUri": "",
+    "createdAt": "2026-10-16T08:00:00.000Z"
+  },
+  {
+    "id": "a12",
+    "courseId": "c4",
+    "title": "Bài tập Logic mệnh đề",
+    "dueAt": "2026-10-19T23:59:00.000Z",
+    "status": "completed",
+    "notes": "Chứng minh 8 mệnh đề logic bằng bảng chân trị và suy diễn.",
+    "photoUri": "",
+    "createdAt": "2026-10-12T08:00:00.000Z"
+  },
+  {
+    "id": "a13",
+    "courseId": "c5",
+    "title": "Viết Essay: Cloud Computing",
+    "dueAt": "2026-10-26T23:59:00.000Z",
+    "status": "pending",
+    "notes": "Viết bài luận 500 từ bằng tiếng Anh về lợi ích của Cloud Computing.",
+    "photoUri": "",
+    "createdAt": "2026-10-19T11:00:00.000Z"
+  },
+  {
+    "id": "a14",
+    "courseId": "c5",
+    "title": "Thuyết trình: AI in Education",
+    "dueAt": "2026-10-29T23:59:00.000Z",
+    "status": "pending",
+    "notes": "Chuẩn bị slides và bài thuyết trình 10 phút về AI trong giáo dục.",
+    "photoUri": "",
+    "createdAt": "2026-10-20T08:00:00.000Z"
+  },
+  {
+    "id": "a15",
+    "courseId": "c5",
+    "title": "Bài tập từ vựng Unit 1-3",
+    "dueAt": "2026-10-18T23:59:00.000Z",
+    "status": "completed",
+    "notes": "Hoàn thành workbook Unit 1-3, học thuộc 60 từ vựng chuyên ngành IT.",
+    "photoUri": "",
+    "createdAt": "2026-10-10T08:00:00.000Z"
+  }
+]

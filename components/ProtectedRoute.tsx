@@ -31,7 +31,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       <View style={[styles.loadingContainer, { backgroundColor: colors.bg }]}>
         <ActivityIndicator size="large" color={colors.accent} />
         <Text style={[styles.loadingText, { color: colors.muted }]}>
-          Đang xác thực tài khoản LumiShop...
+          Đang xác thực tài khoản Study Planner...
         </Text>
       </View>
     );

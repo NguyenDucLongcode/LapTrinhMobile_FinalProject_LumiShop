@@ -30,8 +30,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Cho phép LumiShop truy cập ảnh để chọn ảnh sản phẩm.",
-          "microphonePermission": false
+          "photosPermission": "Ứng dụng cần quyền truy cập ảnh để đính kèm vào bài tập.",
+          "cameraPermission": "Ứng dụng cần quyền camera để chụp ảnh bài tập."
         }
       ]
     ]

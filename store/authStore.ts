@@ -7,8 +7,8 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types';
 
-const TOKEN_KEY = 'shopabc_auth_token';
-const USER_KEY = 'shopabc_auth_user';
+const TOKEN_KEY = 'studyplanner_auth_token';
+const USER_KEY = 'studyplanner_auth_user';
 
 export async function saveToken(token: string): Promise<void> {
   try {
@@ -75,8 +75,8 @@ async function readUser(): Promise<User | null> {
   return {
     id: String(parsed.id ?? ''),
     username: parsed.username ?? 'user',
-    role: parsed.role === 'admin' ? 'admin' : 'customer',
-    name: parsed.name ?? parsed.username ?? 'Khách hàng',
+    role: parsed.role === 'admin' ? 'admin' : 'student',
+    name: parsed.name ?? parsed.username ?? 'Sinh viên',
     email: parsed.email ?? '',
   };
 }
@@ -130,7 +130,7 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
       }
       const user = await readUser();
       set({
-        user: user ?? { id: '0', username: 'user', role: 'customer', name: 'Khách hàng', email: '' },
+        user: user ?? { id: '0', username: 'user', role: 'student', name: 'Sinh viên', email: '' },
         token,
         isLoading: false,
       });
