@@ -51,10 +51,41 @@ export default function CreateAssignmentScreen() {
     if (!dueDate.trim()) {
       newErrors.dueDate = 'Vui lòng nhập ngày hạn chót (dd/MM/yyyy)!';
     } else {
-      // Validate format dd/MM/yyyy
-      const parts = dueDate.split('/');
-      if (parts.length !== 3 || parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4) {
+      const dateMatch = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dueDate);
+      if (!dateMatch) {
         newErrors.dueDate = 'Định dạng ngày: dd/MM/yyyy (VD: 30/10/2026)';
+      } else {
+        const day = Number(dateMatch[1]);
+        const month = Number(dateMatch[2]);
+        const year = Number(dateMatch[3]);
+        const isLeapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+        const daysInMonth = [
+          31,
+          isLeapYear ? 29 : 28,
+          31,
+          30,
+          31,
+          30,
+          31,
+          31,
+          30,
+          31,
+          30,
+          31,
+        ][month - 1];
+
+        if (year < new Date().getFullYear()) {
+          newErrors.dueDate = 'Không thể tạo bài tập với năm đã qua!';
+        } else if (
+          year < 1 ||
+          month < 1 ||
+          month > 12 ||
+          !daysInMonth ||
+          day < 1 ||
+          day > daysInMonth
+        ) {
+          newErrors.dueDate = 'Ngày không hợp lệ. Vui lòng kiểm tra ngày, tháng và năm!';
+        }
       }
     }
     setErrors(newErrors);
@@ -64,13 +95,9 @@ export default function CreateAssignmentScreen() {
   const parseDueAt = (): string => {
     const [dd, mm, yyyy] = dueDate.split('/');
     const [hh, mi] = dueTime.split(':');
-    const date = new Date(
-      parseInt(yyyy, 10),
-      parseInt(mm, 10) - 1,
-      parseInt(dd, 10),
-      parseInt(hh, 10),
-      parseInt(mi, 10)
-    );
+    const date = new Date(0);
+    date.setFullYear(Number(yyyy), Number(mm) - 1, Number(dd));
+    date.setHours(Number(hh), Number(mi), 0, 0);
     return date.toISOString();
   };
 
