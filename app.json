@@ -33,7 +33,8 @@
           "photosPermission": "Ứng dụng cần quyền truy cập ảnh để đính kèm vào bài tập.",
           "cameraPermission": "Ứng dụng cần quyền camera để chụp ảnh bài tập."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

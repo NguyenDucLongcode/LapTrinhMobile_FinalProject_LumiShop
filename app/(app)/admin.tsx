@@ -27,6 +27,7 @@ import { useAuthStore } from '../../store/authStore';
 import { Course, Assignment, AssignmentStatus } from '../../types';
 import { formatDueDate } from '../../utils/dateHelpers';
 import { saveImagePermanently } from '../../utils/imageHelper';
+import DateTimePickerInput from '../../components/DateTimePickerInput';
 
 const PRESET_COLORS = [
   '#6366F1', // Indigo
@@ -108,8 +109,7 @@ export default function AdminScreen() {
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editCourseId, setEditCourseId] = useState('');
-  const [editDueDate, setEditDueDate] = useState('');
-  const [editDueTime, setEditDueTime] = useState('23:59');
+  const [editDueDateTime, setEditDueDateTime] = useState<Date>(new Date());
   const [editNotes, setEditNotes] = useState('');
   const [editStatus, setEditStatus] = useState<AssignmentStatus>('pending');
   const [editAssignmentError, setEditAssignmentError] = useState('');
@@ -195,17 +195,9 @@ export default function AdminScreen() {
     setEditAssignmentError('');
 
     try {
-      const d = new Date(assignment.dueAt);
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      const hh = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      setEditDueDate(`${dd}/${mm}/${yyyy}`);
-      setEditDueTime(`${hh}:${min}`);
+      setEditDueDateTime(new Date(assignment.dueAt));
     } catch {
-      setEditDueDate('');
-      setEditDueTime('23:59');
+      setEditDueDateTime(new Date());
     }
 
     setEditAssignmentModalVisible(true);
@@ -221,30 +213,20 @@ export default function AdminScreen() {
       setEditAssignmentError('Vui lòng chọn môn học!');
       return;
     }
-
-    const parts = editDueDate.split('/');
-    if (parts.length !== 3 || parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4) {
-      setEditAssignmentError('Định dạng ngày: dd/MM/yyyy (VD: 30/10/2026)');
+    if (editDueDateTime <= new Date()) {
+      setEditAssignmentError('Hạn chót không được ở quá khứ!');
       return;
     }
 
-    const [dd, mm, yyyy] = parts;
-    const [hh, mi] = editDueTime.split(':');
-    const parsedDue = new Date(
-      parseInt(yyyy, 10),
-      parseInt(mm, 10) - 1,
-      parseInt(dd, 10),
-      parseInt(hh || '23', 10),
-      parseInt(mi || '59', 10)
-    ).toISOString();
+    const parsedDue = editDueDateTime.toISOString();
 
     try {
-      // Lưu ảnh vĩnh viễn nếu ảnh thay đổi (không phải base64 sẵn và khác URI cũ)
+      // Lưu ảnh vĩnh viễn nếu ảnh thay đổi hoặc ảnh là blob (chưa được chuyển thành Base64)
       let permanentPhotoUri = editPhotoUri;
       if (
         editPhotoUri &&
         !editPhotoUri.startsWith('data:') &&
-        editPhotoUri !== (editingAssignment.photoUri ?? '')
+        (!editingAssignment.photoUri?.startsWith('data:') || editPhotoUri !== editingAssignment.photoUri)
       ) {
         setEditIsSavingImage(true);
         try {
@@ -876,35 +858,19 @@ export default function AdminScreen() {
                 </ScrollView>
               </View>
 
-              {/* Due Date & Time */}
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <View style={[styles.inputGroup, { flex: 2 }]}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Hạn chót (dd/MM/yyyy)</Text>
-                  <TextInput
-                    style={[
-                      styles.textInput,
-                      { backgroundColor: colors.bg, borderColor: colors.border, borderRadius: borderRadius.input, color: colors.text },
-                    ]}
-                    value={editDueDate}
-                    onChangeText={setEditDueDate}
-                    placeholder="dd/MM/yyyy"
-                    placeholderTextColor={colors.muted}
-                  />
-                </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>Giờ (HH:mm)</Text>
-                  <TextInput
-                    style={[
-                      styles.textInput,
-                      { backgroundColor: colors.bg, borderColor: colors.border, borderRadius: borderRadius.input, color: colors.text },
-                    ]}
-                    value={editDueTime}
-                    onChangeText={setEditDueTime}
-                    placeholder="23:59"
-                    placeholderTextColor={colors.muted}
-                  />
-                </View>
-              </View>
+              {/* Due Date & Time — DateTimePickerInput */}
+              <DateTimePickerInput
+                label="Hạn chót"
+                value={editDueDateTime}
+                onChange={(d) => {
+                  setEditDueDateTime(d);
+                  setEditAssignmentError('');
+                }}
+                minimumDate={new Date()}
+                colors={colors}
+                borderRadius={borderRadius}
+                required
+              />
 
               {/* Status */}
               <View style={styles.inputGroup}>

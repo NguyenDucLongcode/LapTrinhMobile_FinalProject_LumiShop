@@ -1,5 +1,5 @@
 // app/(app)/assignment/create.tsx
-// Form tạo bài tập mới: Title, Course dropdown, DateTimePicker, Notes, Image Picker
+// Form tạo bài tập mới: Title, Course dropdown, DateTimePickerInput, Notes, Image Picker
 
 import React, { useState, useCallback } from 'react';
 import {
@@ -26,6 +26,18 @@ import { useCreateAssignment } from '../../../hooks/useAssignmentsQuery';
 import { Course, AssignmentInput } from '../../../types';
 import { scheduleAssignmentNotification } from '../../../utils/notifications';
 import { saveImagePermanently } from '../../../utils/imageHelper';
+import DateTimePickerInput from '../../../components/DateTimePickerInput';
+
+// Ngày mặc định: hôm nay 23:59
+function defaultDueDate(): Date {
+  const d = new Date();
+  d.setHours(23, 59, 0, 0);
+  // Nếu đã qua 23:59 hôm nay thì dùng ngày mai
+  if (d <= new Date()) {
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
+}
 
 export default function CreateAssignmentScreen() {
   const router = useRouter();
@@ -35,8 +47,7 @@ export default function CreateAssignmentScreen() {
 
   const [title, setTitle] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [dueDate, setDueDate] = useState('');
-  const [dueTime, setDueTime] = useState('23:59');
+  const [dueDate, setDueDate] = useState<Date>(defaultDueDate);
   const [notes, setNotes] = useState('');
   const [photoUri, setPhotoUri] = useState('');
   const [tempImageUri, setTempImageUri] = useState('');
@@ -48,38 +59,19 @@ export default function CreateAssignmentScreen() {
     const newErrors: Record<string, string> = {};
     if (!title.trim()) newErrors.title = 'Vui lòng nhập tên bài tập!';
     if (!selectedCourse) newErrors.course = 'Vui lòng chọn môn học!';
-    if (!dueDate.trim()) {
-      newErrors.dueDate = 'Vui lòng nhập ngày hạn chót (dd/MM/yyyy)!';
-    } else {
-      // Validate format dd/MM/yyyy
-      const parts = dueDate.split('/');
-      if (parts.length !== 3 || parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4) {
-        newErrors.dueDate = 'Định dạng ngày: dd/MM/yyyy (VD: 30/10/2026)';
-      }
+    if (dueDate <= new Date()) {
+      newErrors.dueDate = 'Hạn chót không được ở quá khứ!';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const parseDueAt = (): string => {
-    const [dd, mm, yyyy] = dueDate.split('/');
-    const [hh, mi] = dueTime.split(':');
-    const date = new Date(
-      parseInt(yyyy, 10),
-      parseInt(mm, 10) - 1,
-      parseInt(dd, 10),
-      parseInt(hh, 10),
-      parseInt(mi, 10)
-    );
-    return date.toISOString();
-  };
-
   const handleSubmit = useCallback(async () => {
     if (!validate()) return;
 
-    // Nếu có ảnh tạm thì lưu vĩnh viễn trước
+    // BẮT BUỘC lưu ảnh vĩnh viễn (Base64 trên Web hoặc file local trên Mobile) nếu có ảnh
     let permanentPhotoUri = photoUri;
-    if (tempImageUri && tempImageUri !== photoUri) {
+    if (tempImageUri) {
       setIsSavingImage(true);
       try {
         permanentPhotoUri = await saveImagePermanently(tempImageUri);
@@ -94,7 +86,7 @@ export default function CreateAssignmentScreen() {
     const data: AssignmentInput = {
       courseId: selectedCourse!.id,
       title: title.trim(),
-      dueAt: parseDueAt(),
+      dueAt: dueDate.toISOString(),
       status: 'pending',
       notes: notes.trim(),
       photoUri: permanentPhotoUri,
@@ -122,7 +114,7 @@ export default function CreateAssignmentScreen() {
         Alert.alert('Lỗi', msg);
       }
     }
-  }, [title, selectedCourse, dueDate, dueTime, notes, photoUri, tempImageUri, createMutation, router]);
+  }, [title, selectedCourse, dueDate, notes, photoUri, tempImageUri, createMutation, router]);
 
   const handlePickImage = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -243,62 +235,20 @@ export default function CreateAssignmentScreen() {
           {errors.course ? <Text style={[styles.errorText, { color: colors.danger }]}>{errors.course}</Text> : null}
         </View>
 
-        {/* Due Date */}
-        <View style={styles.dateRow}>
-          <View style={[styles.fieldGroup, { flex: 2 }]}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>
-              Hạn chót <Text style={{ color: colors.danger }}>*</Text>
-            </Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: errors.dueDate ? colors.danger : colors.border,
-                  borderRadius: borderRadius.input,
-                },
-              ]}
-            >
-              <Ionicons name="calendar-outline" size={18} color={colors.muted} />
-              <TextInput
-                style={[styles.textInput, { color: colors.text }]}
-                placeholder="dd/MM/yyyy"
-                placeholderTextColor={colors.muted}
-                value={dueDate}
-                onChangeText={(t) => {
-                  setDueDate(t);
-                  setErrors((e) => ({ ...e, dueDate: '' }));
-                }}
-                keyboardType="numbers-and-punctuation"
-              />
-            </View>
-            {errors.dueDate ? <Text style={[styles.errorText, { color: colors.danger }]}>{errors.dueDate}</Text> : null}
-          </View>
-
-          <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Giờ</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  borderRadius: borderRadius.input,
-                },
-              ]}
-            >
-              <Ionicons name="time-outline" size={18} color={colors.muted} />
-              <TextInput
-                style={[styles.textInput, { color: colors.text }]}
-                placeholder="HH:mm"
-                placeholderTextColor={colors.muted}
-                value={dueTime}
-                onChangeText={setDueTime}
-                keyboardType="numbers-and-punctuation"
-              />
-            </View>
-          </View>
-        </View>
+        {/* ── DateTimePickerInput (thay thế 2 TextInput cũ) ── */}
+        <DateTimePickerInput
+          label="Hạn chót"
+          value={dueDate}
+          onChange={(d) => {
+            setDueDate(d);
+            setErrors((e) => ({ ...e, dueDate: '' }));
+          }}
+          minimumDate={new Date()}
+          colors={colors}
+          borderRadius={borderRadius}
+          error={errors.dueDate}
+          required
+        />
 
         {/* Notes */}
         <View style={styles.fieldGroup}>
@@ -474,10 +424,6 @@ const styles = StyleSheet.create({
   textArea: {
     fontSize: 14,
     minHeight: 80,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    gap: 12,
   },
   errorText: {
     fontSize: 12,
